@@ -83,7 +83,6 @@ import com.example.data.model.TransactionRecord
 import com.example.data.model.TransactionType
 import com.example.ui.theme.CashInGreen
 import com.example.ui.theme.CashOutRed
-import com.example.util.MathExpressionEvaluator
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -329,20 +328,25 @@ fun AddEditTransactionDialog(
                     )
                 }
 
-                // Amount Field with Built-in Calculator
-                CalculatorEntryField(
+                // Amount Field
+                OutlinedTextField(
                     value = amountStr,
                     onValueChange = {
                         amountStr = it
                         if (amountError) amountError = false
                     },
-                    label = "Amount",
-                    placeholder = "0.00 (e.g. 1500+250)",
+                    label = { Text("Amount *") },
+                    placeholder = { Text("0.00") },
                     isError = amountError,
                     supportingText = if (amountError) {
-                        { Text("Please enter a valid amount or expression", color = MaterialTheme.colorScheme.error) }
+                        { Text("Please enter a valid amount greater than 0", color = MaterialTheme.colorScheme.error) }
                     } else null,
-                    testTag = "transaction_amount_input"
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("transaction_amount_input")
                 )
 
                 // Category Selection
@@ -487,7 +491,6 @@ fun AddEditTransactionDialog(
                     Button(
                         onClick = {
                             val parsedAmount = amountStr.toDoubleOrNull()
-                                ?: MathExpressionEvaluator.evaluate(amountStr)
                             if (parsedAmount == null || parsedAmount <= 0) {
                                 amountError = true
                             } else {
@@ -743,40 +746,21 @@ fun AdvancedFilterDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    val minCalcResult = remember(minAmountStr) {
-                        if (minAmountStr.contains("+") || minAmountStr.contains("-") ||
-                            minAmountStr.contains("*") || minAmountStr.contains("/")
-                        ) {
-                            MathExpressionEvaluator.evaluate(minAmountStr)?.let {
-                                MathExpressionEvaluator.formatResult(it)
-                            }
-                        } else null
-                    }
-                    val maxCalcResult = remember(maxAmountStr) {
-                        if (maxAmountStr.contains("+") || maxAmountStr.contains("-") ||
-                            maxAmountStr.contains("*") || maxAmountStr.contains("/")
-                        ) {
-                            MathExpressionEvaluator.evaluate(maxAmountStr)?.let {
-                                MathExpressionEvaluator.formatResult(it)
-                            }
-                        } else null
-                    }
-
                     OutlinedTextField(
                         value = minAmountStr,
                         onValueChange = { minAmountStr = it },
-                        label = { Text(if (minCalcResult != null) "= $minCalcResult" else "Min") },
-                        placeholder = { Text("Min") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                        label = { Text("Min") },
+                        placeholder = { Text("0.00") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
                         modifier = Modifier.weight(1f)
                     )
                     OutlinedTextField(
                         value = maxAmountStr,
                         onValueChange = { maxAmountStr = it },
-                        label = { Text(if (maxCalcResult != null) "= $maxCalcResult" else "Max") },
-                        placeholder = { Text("Max") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                        label = { Text("Max") },
+                        placeholder = { Text("0.00") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
                         modifier = Modifier.weight(1f)
                     )
@@ -809,9 +793,7 @@ fun AdvancedFilterDialog(
             Button(
                 onClick = {
                     val min = minAmountStr.toDoubleOrNull()
-                        ?: MathExpressionEvaluator.evaluate(minAmountStr)
                     val max = maxAmountStr.toDoubleOrNull()
-                        ?: MathExpressionEvaluator.evaluate(maxAmountStr)
                     onApply(
                         currentCriteria.copy(
                             dateRange = dateRange,
