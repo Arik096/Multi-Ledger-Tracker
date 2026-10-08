@@ -54,6 +54,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import com.example.ui.components.CalculatorEntryField
+import com.example.util.MathExpressionEvaluator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -278,25 +280,21 @@ fun LogEntryScreen(
                 }
             }
 
-            // 1. Amount Input Field (Top)
-            OutlinedTextField(
+            // 1. Amount Input Field with Built-in Active Calculator
+            CalculatorEntryField(
                 value = amountStr,
                 onValueChange = {
                     amountStr = it
                     if (amountError) amountError = false
                 },
-                label = { Text("Amount (${currentBook?.currencySymbol ?: "৳"}) *") },
-                placeholder = { Text("0.00") },
+                label = "Amount (${currentBook?.currencySymbol ?: "৳"}) *",
+                placeholder = "0.00 (e.g. 500+250*2)",
                 isError = amountError,
                 supportingText = if (amountError) {
-                    { Text("Please enter a valid amount", color = MaterialTheme.colorScheme.error) }
+                    { Text("Please enter a valid amount or expression", color = MaterialTheme.colorScheme.error) }
                 } else null,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true,
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("log_entry_amount_input")
+                testTag = "log_entry_amount_input",
+                showKeypadInitially = false
             )
 
             // 2. Title Input Field
@@ -720,9 +718,14 @@ fun LogEntryScreen(
                     }
 
                     val parsedAmount = amountStr.toDoubleOrNull()
+                        ?: MathExpressionEvaluator.evaluate(amountStr)
+
                     if (parsedAmount == null || parsedAmount <= 0.0) {
                         amountError = true
                         hasError = true
+                    } else {
+                        // Normalize amountStr to final evaluated string
+                        amountStr = MathExpressionEvaluator.formatResult(parsedAmount)
                     }
 
                     if (isCategoryEnabled && isCategoryMandatory && selectedCategory.isBlank()) {

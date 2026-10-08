@@ -29,6 +29,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
@@ -84,6 +85,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.CashInGreen
 import com.example.ui.theme.CashOutRed
+import com.example.util.MathExpressionEvaluator
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -149,9 +151,17 @@ fun CashPositionScreen(
     var showClearConfirmDialog by remember { mutableStateOf(false) }
     var showResetConfirmDialog by remember { mutableStateOf(false) }
 
-    // Computations
-    val physicalTotal = physicalFields.sumOf { it.amountStr.toDoubleOrNull() ?: 0.0 }
-    val accountTotal = accountFields.sumOf { it.amountStr.toDoubleOrNull() ?: 0.0 }
+    // Computations supporting direct numbers and mathematical expressions
+    val physicalTotal = physicalFields.sumOf {
+        it.amountStr.toDoubleOrNull()
+            ?: MathExpressionEvaluator.evaluate(it.amountStr)
+            ?: 0.0
+    }
+    val accountTotal = accountFields.sumOf {
+        it.amountStr.toDoubleOrNull()
+            ?: MathExpressionEvaluator.evaluate(it.amountStr)
+            ?: 0.0
+    }
     val difference = physicalTotal - accountTotal
 
     val timeFormatter = remember { SimpleDateFormat("hh:mm a, dd MMM", Locale.getDefault()) }
@@ -1053,13 +1063,24 @@ private fun CashFieldInputRow(
             }
         }
 
-        // Amount Input Field
+        // Calculator live evaluation preview
+        val liveCalcResult = remember(amountStr) {
+            if (amountStr.contains("+") || amountStr.contains("-") || amountStr.contains("*") ||
+                amountStr.contains("/") || amountStr.contains("%")
+            ) {
+                MathExpressionEvaluator.evaluate(amountStr)?.let {
+                    MathExpressionEvaluator.formatResult(it)
+                }
+            } else null
+        }
+
+        // Amount Input Field with full Calculator Expression Support
         OutlinedTextField(
             value = amountStr,
             onValueChange = { input ->
-                // Allow digits, decimal dot, and optional leading minus
+                // Allow digits, decimal dot, math operators and parentheses
                 val filtered = input.filterIndexed { idx, c ->
-                    c.isDigit() || c == '.' || (c == '-' && idx == 0)
+                    c.isDigit() || c in "+-*/%(). " || (c == '-' && idx == 0)
                 }
                 onAmountChange(filtered)
             },
@@ -1072,11 +1093,41 @@ private fun CashFieldInputRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
+            trailingIcon = if (liveCalcResult != null) {
+                {
+                    IconButton(
+                        onClick = { onAmountChange(liveCalcResult) },
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(22.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = "=",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
+                        }
+                    }
+                }
+            } else null,
             singleLine = true,
             shape = RoundedCornerShape(10.dp),
             keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Text, // Allows typing '-' easily
+                keyboardType = KeyboardType.Text, // Allows typing operators easily
                 imeAction = ImeAction.Next
+            ),
+            keyboardActions = KeyboardActions(
+                onNext = {
+                    if (liveCalcResult != null) {
+                        onAmountChange(liveCalcResult)
+                    }
+                }
             ),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = if (isNegative) CashOutRed else MaterialTheme.colorScheme.onSurface,
