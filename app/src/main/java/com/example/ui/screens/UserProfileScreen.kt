@@ -1483,44 +1483,77 @@ private fun UserProfileHeaderCard(
 
                     Spacer(modifier = Modifier.height(6.dp))
 
-                    // Connection Badge
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = if (isAccountConnected) CashInGreen.copy(alpha = 0.15f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        // Connection Badge
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isAccountConnected) CashInGreen.copy(alpha = 0.15f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(7.dp)
-                                    .clip(CircleShape)
-                                    .background(if (isAccountConnected) CashInGreen else MaterialTheme.colorScheme.outline)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = if (isAccountConnected) "Cloud Auto-Sync Active" else "Local Only (Tap to Connect)",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (isAccountConnected) CashInGreen else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(7.dp)
+                                        .clip(CircleShape)
+                                        .background(if (isAccountConnected) CashInGreen else MaterialTheme.colorScheme.outline)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (isAccountConnected) "Cloud Synced" else "Local Only",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (isAccountConnected) CashInGreen else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        // Edit / Sign In Button beside badge
+                        Surface(
+                            onClick = if (isAccountConnected) onEditClick else onConnectClick,
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surface,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                            modifier = Modifier.testTag("btn_edit_profile_header")
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isAccountConnected) Icons.Default.Edit else Icons.Default.CloudSync,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = if (isAccountConnected) "Edit" else "Sign In",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
             Spacer(modifier = Modifier.height(14.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // Stats & Action buttons (Responsive)
+            // Quick Stats Row (2 clean, balanced cards)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Total Books Pill
+                // Total Books Card
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.surface,
@@ -1537,14 +1570,14 @@ private fun UserProfileHeaderCard(
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = if (totalBooks == 1) "Ledger Book" else "Ledger Books",
-                            fontSize = 11.sp,
+                            text = if (totalBooks == 1) "Book" else "Books",
+                            fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
 
-                // Total Records Pill
+                // Total Entries Card
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.surface,
@@ -1561,28 +1594,11 @@ private fun UserProfileHeaderCard(
                             color = MaterialTheme.colorScheme.secondary
                         )
                         Text(
-                            text = if (totalTransactions == 1) "Entry Recorded" else "Entries Recorded",
-                            fontSize = 11.sp,
+                            text = if (totalTransactions == 1) "Entry" else "Entries",
+                            fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                }
-
-                // Edit Button
-                OutlinedButton(
-                    onClick = if (isAccountConnected) onEditClick else onConnectClick,
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .height(48.dp)
-                        .testTag("btn_edit_profile_header")
-                ) {
-                    Icon(
-                        imageVector = if (isAccountConnected) Icons.Default.Edit else Icons.Default.CloudSync,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(if (isAccountConnected) "Edit" else "Sign In", fontSize = 13.sp)
                 }
             }
         }
@@ -1641,12 +1657,12 @@ private fun GoogleCloudSyncCard(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "Google Drive AppData Vault",
+                            text = "Cloud Backup Vault",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Isolated Cloud Storage • Survives Cache Clear",
+                            text = "Google Drive • Safe from device resets",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -1685,7 +1701,7 @@ private fun GoogleCloudSyncCard(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = if (isConnected) "Connected: $email" else "No Google Account Linked",
+                                text = if (isConnected) "Connected: $email" else "Not connected",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface,
@@ -1699,9 +1715,9 @@ private fun GoogleCloudSyncCard(
 
                     Text(
                         text = if (isConnected) {
-                            "All transactions, ledger books, and custom categories automatically mirror to your Google Drive AppData folder in real-time. If you wipe cache/storage in Android Settings, signing in here restores all your records directly from Google Drive AppData."
+                            "All books and entries automatically backup to your Google Drive in real-time. If you switch phones or clear storage, signing in restores everything."
                         } else {
-                            "Connect your Google account so that every transaction is safeguarded to Google Drive AppData folder. You will never lose your financial logs."
+                            "Connect your Google account to keep your entries backed up safely in Google Drive."
                         },
                         fontSize = 12.sp,
                         lineHeight = 17.sp,

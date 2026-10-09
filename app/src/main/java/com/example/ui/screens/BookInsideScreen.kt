@@ -276,7 +276,7 @@ fun BookInsideScreen(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = "Add Member, Book Activity...",
+                            text = "Activity & Members",
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 12.sp
@@ -821,21 +821,21 @@ fun BookInsideScreen(
                             // Cash In & Cash Out Stat Cards Row (Side by side matching dashboard)
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 // Cash In Card
                                 Surface(
-                                    shape = RoundedCornerShape(16.dp),
+                                    shape = RoundedCornerShape(14.dp),
                                     color = Color.White.copy(alpha = 0.08f),
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Row(
-                                        modifier = Modifier.padding(12.dp),
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Box(
                                             modifier = Modifier
-                                                .size(36.dp)
+                                                .size(28.dp)
                                                 .clip(CircleShape)
                                                 .background(Color.White.copy(alpha = 0.12f)),
                                             contentAlignment = Alignment.Center
@@ -844,24 +844,25 @@ fun BookInsideScreen(
                                                 imageVector = Icons.Default.ArrowUpward,
                                                 contentDescription = null,
                                                 tint = Color(0xFF4ADE80),
-                                                modifier = Modifier.size(18.dp)
+                                                modifier = Modifier.size(15.dp)
                                             )
                                         }
-                                        Spacer(modifier = Modifier.width(10.dp))
-                                        Column(modifier = Modifier.weight(1f, fill = false)) {
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
                                             Text(
                                                 text = "TOTAL IN",
                                                 color = Color.White.copy(alpha = 0.7f),
-                                                fontSize = 10.sp,
+                                                fontSize = 9.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 letterSpacing = 0.5.sp,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
+                                                maxLines = 1
                                             )
+                                            val formattedIn = formatDisplayAmount(totalIn)
+                                            val inFontSize = if (formattedIn.length > 9) 12.sp else if (formattedIn.length > 6) 13.sp else 15.sp
                                             Text(
-                                                text = "+${book.currencySymbol}${formatDisplayAmount(totalIn)}",
+                                                text = "+${book.currencySymbol}$formattedIn",
                                                 color = Color(0xFF4ADE80),
-                                                fontSize = 15.sp,
+                                                fontSize = inFontSize,
                                                 fontWeight = FontWeight.Bold,
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis
@@ -872,17 +873,17 @@ fun BookInsideScreen(
 
                                 // Cash Out Card
                                 Surface(
-                                    shape = RoundedCornerShape(16.dp),
+                                    shape = RoundedCornerShape(14.dp),
                                     color = Color.White.copy(alpha = 0.08f),
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Row(
-                                        modifier = Modifier.padding(12.dp),
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Box(
                                             modifier = Modifier
-                                                .size(36.dp)
+                                                .size(28.dp)
                                                 .clip(CircleShape)
                                                 .background(Color.White.copy(alpha = 0.12f)),
                                             contentAlignment = Alignment.Center
@@ -891,24 +892,25 @@ fun BookInsideScreen(
                                                 imageVector = Icons.Default.ArrowDownward,
                                                 contentDescription = null,
                                                 tint = Color(0xFFF87171),
-                                                modifier = Modifier.size(18.dp)
+                                                modifier = Modifier.size(15.dp)
                                             )
                                         }
-                                        Spacer(modifier = Modifier.width(10.dp))
-                                        Column(modifier = Modifier.weight(1f, fill = false)) {
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
                                             Text(
                                                 text = "TOTAL OUT",
                                                 color = Color.White.copy(alpha = 0.7f),
-                                                fontSize = 10.sp,
+                                                fontSize = 9.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 letterSpacing = 0.5.sp,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
+                                                maxLines = 1
                                             )
+                                            val formattedOut = formatDisplayAmount(totalOut)
+                                            val outFontSize = if (formattedOut.length > 9) 12.sp else if (formattedOut.length > 6) 13.sp else 15.sp
                                             Text(
-                                                text = "-${book.currencySymbol}${formatDisplayAmount(totalOut)}",
+                                                text = "-${book.currencySymbol}$formattedOut",
                                                 color = Color(0xFFF87171),
-                                                fontSize = 15.sp,
+                                                fontSize = outFontSize,
                                                 fontWeight = FontWeight.Bold,
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis

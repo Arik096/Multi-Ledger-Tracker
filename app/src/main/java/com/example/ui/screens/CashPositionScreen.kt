@@ -169,7 +169,7 @@ fun CashPositionScreen(
                             maxLines = 1
                         )
                         Text(
-                            text = "Physical vs Account Comparison",
+                            text = "Cash Comparison",
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1
@@ -239,7 +239,7 @@ fun CashPositionScreen(
             item(key = "physical_cash_card") {
                 CashCategorySection(
                     title = "Physical Cash",
-                    subtitle = "Bank balances, cash in hand, wallets & OD",
+                    subtitle = "Bank, cash & wallets",
                     totalAmount = physicalTotal,
                     currencySymbol = currencySymbol,
                     items = physicalFields,
@@ -275,7 +275,7 @@ fun CashPositionScreen(
             item(key = "account_cash_card") {
                 CashCategorySection(
                     title = "Account Cash",
-                    subtitle = "Savings, current month budget, extra & lendings",
+                    subtitle = "Savings & budget allocations",
                     totalAmount = accountTotal,
                     currencySymbol = currencySymbol,
                     items = accountFields,
@@ -981,25 +981,25 @@ private fun CashFieldInputRow(
             .fillMaxWidth()
             .padding(vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        // Field Name with edit icon & delete icon
+        // Field Name with edit icon & delete icon (compact)
         Row(
-            modifier = Modifier.weight(1.15f),
+            modifier = Modifier.weight(0.95f),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Delete button for this field
             IconButton(
                 onClick = onDelete,
                 modifier = Modifier
-                    .size(26.dp)
+                    .size(24.dp)
                     .testTag("delete_field_${name.lowercase().replace(" ", "_")}")
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Delete $name",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
-                    modifier = Modifier.size(15.dp)
+                    modifier = Modifier.size(14.dp)
                 )
             }
 
@@ -1011,7 +1011,7 @@ private fun CashFieldInputRow(
                     .weight(1f, fill = false)
                     .clip(RoundedCornerShape(6.dp))
                     .clickable(onClick = onEditName)
-                    .padding(vertical = 4.dp, horizontal = 3.dp),
+                    .padding(vertical = 4.dp, horizontal = 2.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
@@ -1023,70 +1023,95 @@ private fun CashFieldInputRow(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
                 )
-                Spacer(modifier = Modifier.width(3.dp))
+                Spacer(modifier = Modifier.width(2.dp))
                 Icon(
                     imageVector = Icons.Default.Edit,
                     contentDescription = "Edit $name",
                     tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                    modifier = Modifier.size(13.dp)
+                    modifier = Modifier.size(12.dp)
                 )
             }
         }
 
-        // "+/-" Sign Toggle Button (critical for easy negative input on any Android soft keyboard)
+        // "+/-" Sign Toggle Button
         Surface(
             onClick = onToggleSign,
             shape = RoundedCornerShape(8.dp),
             color = if (isNegative) CashOutRed.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
             border = if (isNegative) androidx.compose.foundation.BorderStroke(1.dp, CashOutRed) else null,
             modifier = Modifier
-                .height(38.dp)
-                .width(36.dp)
+                .height(44.dp)
+                .width(32.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Text(
                     text = if (isNegative) "–" else "+",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
+                    fontSize = 15.sp,
                     color = if (isNegative) CashOutRed else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
 
-        // Amount Input Field
-        OutlinedTextField(
-            value = amountStr,
-            onValueChange = { input ->
-                // Allow digits, decimal dot, and optional leading minus
-                val filtered = input.filterIndexed { idx, c ->
-                    c.isDigit() || c == '.' || (c == '-' && idx == 0)
-                }
-                onAmountChange(filtered)
-            },
-            placeholder = { Text("0.00", fontSize = 13.sp) },
-            prefix = {
-                Text(
-                    text = currencySymbol,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
-            singleLine = true,
+        // Amount Input Field - cleanly styled with currency and ample typing area
+        Surface(
             shape = RoundedCornerShape(10.dp),
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Decimal,
-                imeAction = ImeAction.Next
-            ),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = if (isNegative) CashOutRed else MaterialTheme.colorScheme.onSurface,
-                unfocusedTextColor = if (isNegative) CashOutRed else MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+            border = androidx.compose.foundation.BorderStroke(
+                width = 1.dp,
+                color = if (isNegative) CashOutRed.copy(alpha = 0.6f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
             ),
             modifier = Modifier
                 .weight(1.35f)
-                .height(52.dp)
-                .testTag("cash_input_${name.lowercase().replace(" ", "_")}")
-        )
+                .height(44.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = currencySymbol,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isNegative) CashOutRed else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                androidx.compose.foundation.text.BasicTextField(
+                    value = amountStr,
+                    onValueChange = { input ->
+                        val filtered = input.filterIndexed { idx, c ->
+                            c.isDigit() || c == '.' || (c == '-' && idx == 0)
+                        }
+                        onAmountChange(filtered)
+                    },
+                    singleLine = true,
+                    textStyle = androidx.compose.ui.text.TextStyle(
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (isNegative) CashOutRed else MaterialTheme.colorScheme.onSurface
+                    ),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = ImeAction.Next
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("cash_input_${name.lowercase().replace(" ", "_")}"),
+                    decorationBox = { innerTextField ->
+                        if (amountStr.isEmpty()) {
+                            Text(
+                                text = "0.00",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
+                            )
+                        }
+                        innerTextField()
+                    }
+                )
+            }
+        }
     }
 }
 
