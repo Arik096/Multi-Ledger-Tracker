@@ -434,7 +434,7 @@ fun MainAppScreen(
             },
             title = {
                 Text(
-                    text = "Sign In with Google Account",
+                    text = "Sign in to Multi-Ledger",
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center
                 )
@@ -442,10 +442,39 @@ fun MainAppScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        text = "Enter your Google account to get started. The app will search for any previous records in your cloud vault and restore them, or start fresh with automatic cloud backup so you never lose your data.",
+                        text = "Sign in with Google to save your records in Firestore cloud and keep them safely synced.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+
+                    Button(
+                        onClick = {
+                            isFirstLoginConnecting = true
+                            viewModel.signInWithGoogle { success, msg ->
+                                isFirstLoginConnecting = false
+                                hasDismissedFirstTimeLogin = true
+                                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .testTag("first_login_google_signin_button")
+                    ) {
+                        Icon(Icons.Default.CloudSync, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Sign in with Google", fontWeight = FontWeight.Bold)
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        androidx.compose.material3.HorizontalDivider(modifier = Modifier.weight(1f))
+                        Text(" or enter email ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        androidx.compose.material3.HorizontalDivider(modifier = Modifier.weight(1f))
+                    }
 
                     OutlinedTextField(
                         value = firstLoginEmailInput,

@@ -7,8 +7,13 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.data.auth.AuthResult
+import com.example.data.auth.GoogleAuthManager
 import com.example.data.cloud.CloudStorageManager
 import com.example.data.db.AppDatabase
+import com.example.data.firestore.FirestoreRepository
+import com.example.data.firestore.FirestoreSyncService
+import com.example.data.firestore.SyncStatus
 import com.example.data.io.BackupResult
 import com.example.data.io.CsvExporterImporter
 import com.example.data.io.GoogleDriveBackupManager
@@ -24,13 +29,16 @@ import com.example.data.preferences.AppPreferencesManager
 import com.example.data.preferences.ModernPalette
 import com.example.data.preferences.ThemeMode
 import com.example.data.repository.LedgerRepository
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -57,8 +65,16 @@ data class TrendPoint(
 
 class LedgerViewModel(
     application: Application,
-    private val repository: LedgerRepository
+    private val repository: LedgerRepository,
+    private val authManager: GoogleAuthManager = GoogleAuthManager(application),
+    val syncService: FirestoreSyncService = FirestoreSyncService(
+        firestoreRepository = FirestoreRepository(application),
+        ledgerRepository = repository,
+        scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    )
 ) : AndroidViewModel(application) {
+
+    val syncStatus: StateFlow<SyncStatus> = syncService.syncStatus
 
     val allBooks: StateFlow<List<LedgerBook>> = repository.allBooks
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -119,6 +135,26 @@ class LedgerViewModel(
     val isAccountConnected: StateFlow<Boolean> = combine(_driveAccountEmail) { emails ->
         emails[0].isNotBlank()
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AppPreferencesManager.getGoogleAccountEmail(application).isNotBlank())
+
+    init {
+        viewModelScope.launch {
+            authManager.authStateFlow().collectLatest { user ->
+                syncService.onUserAuthenticated(user)
+                if (user != null) {
+                    val email = user.email ?: ""
+                    _driveAccountEmail.value = email
+                    AppPreferencesManager.setGoogleAccountEmail(getApplication(), email)
+                    val name = user.displayName ?: email.substringBefore("@")
+                    _userName.value = name
+                    AppPreferencesManager.setUserName(getApplication(), name)
+                    _isDriveConnected.value = true
+                    AppPreferencesManager.setGoogleDriveConnected(getApplication(), true)
+                } else {
+                    _isDriveConnected.value = false
+                }
+            }
+        }
+    }
 
     // Current active book object for book-wise dashboard statistics (never consolidates)
     val currentBook: StateFlow<LedgerBook?> = combine(allBooks, _selectedBookId) { books, id ->
@@ -215,86 +251,91 @@ class LedgerViewModel(
 
     init {
         viewModelScope.launch {
-            val email = _driveAccountEmail.value.trim().ifBlank {
-                AppPreferencesManager.getGoogleAccountEmail(getApplication()).trim().ifBlank {
-                    GoogleDriveBackupManager.getConnectedAccount(getApplication())
+            authManager.authStateFlow().collectLatest { user ->
+                syncService.onUserAuthenticated(user)
+                if (user != null) {
+                    val email = user.email ?: ""
+                    _driveAccountEmail.value = email
+                    AppPreferencesManager.setGoogleAccountEmail(getApplication(), email)
+                    val name = user.displayName ?: email.substringBefore("@")
+                    _userName.value = name
+                    AppPreferencesManager.setUserName(getApplication(), name)
+                    _isDriveConnected.value = true
+                    AppPreferencesManager.setGoogleDriveConnected(getApplication(), true)
+                } else {
+                    _isDriveConnected.value = false
                 }
             }
-            val existingBooks = repository.activeBooks.first()
-
-            if (existingBooks.isEmpty()) {
-                // If user was previously logged in or app data was cleared, check cloud vault
-                val cloudData = CloudStorageManager.fetchCloudData(getApplication(), email)
-                if (cloudData.success && cloudData.books.isNotEmpty()) {
-                    repository.restoreAllData(cloudData.books, cloudData.transactions)
-                    val restoredBooks = repository.activeBooks.first()
-                    if (restoredBooks.isNotEmpty()) {
-                        _selectedBookId.value = restoredBooks.first().id
-                    }
-                }
-            } else if (existingBooks.isNotEmpty() && _selectedBookId.value == null) {
-                _selectedBookId.value = existingBooks.first().id
-            }
-
-            // Sync on app open with Toast
-            triggerAutoSync(showToast = true)
         }
     }
 
-    fun triggerAutoSync(showToast: Boolean = true, toastMessage: String = "Syncing Data...") {
-        viewModelScope.launch(Dispatchers.Main) {
-            if (showToast) {
-                val now = System.currentTimeMillis()
-                if (now - lastToastTime > 500L) {
-                    lastToastTime = now
-                    try {
-                        Toast.makeText(getApplication(), toastMessage, Toast.LENGTH_SHORT).show()
-                    } catch (e: Exception) {}
-                }
-            }
-            withContext(Dispatchers.IO) {
+    fun triggerAutoSync(showToast: Boolean = false, toastMessage: String = "Syncing...") {
+        viewModelScope.launch {
+            val user = authManager.currentUser
+            if (user != null) {
                 _isCloudSyncing.value = true
-                val email = _driveAccountEmail.value.trim().ifBlank {
-                    AppPreferencesManager.getGoogleAccountEmail(getApplication()).trim().ifBlank {
-                        GoogleDriveBackupManager.getConnectedAccount(getApplication())
-                    }
-                }
-                val books = repository.allBooks.first()
-                val txs = repository.getAllTransactionsDirect()
-                CloudStorageManager.autoSyncToCloud(getApplication(), email, books, txs)
-                val summary = AppPreferencesManager.getLastBackupSummary(getApplication())
-                _lastBackupSummary.value = summary
+                val success = syncService.triggerManualSync()
                 _isCloudSyncing.value = false
+                if (success) {
+                    val summary = "${allBooks.value.size} Books • ${allTransactions.value.size} Records"
+                    _lastBackupSummary.value = summary
+                    AppPreferencesManager.setLastBackupSummary(getApplication(), summary)
+                    AppPreferencesManager.setLastBackupTime(getApplication(), System.currentTimeMillis())
+                    if (showToast) _snackbarMessage.emit("Synced to Cloud")
+                }
+            } else {
+                authManager.trySilentSignIn()
             }
         }
     }
 
-    suspend fun triggerAutoSyncDirect(showToast: Boolean = true, toastMessage: String = "Syncing Data..."): Boolean {
-        if (showToast) {
-            withContext(Dispatchers.Main) {
-                val now = System.currentTimeMillis()
-                if (now - lastToastTime > 500L) {
-                    lastToastTime = now
-                    try {
-                        Toast.makeText(getApplication(), toastMessage, Toast.LENGTH_SHORT).show()
-                    } catch (e: Exception) {}
+    suspend fun triggerAutoSyncDirect(showToast: Boolean = true, toastMessage: String = "Syncing..."): Boolean {
+        return withContext(Dispatchers.IO) {
+            val user = authManager.currentUser
+            if (user != null) {
+                _isCloudSyncing.value = true
+                val success = syncService.triggerManualSync()
+                _isCloudSyncing.value = false
+                if (success) {
+                    val summary = "${allBooks.value.size} Books • ${allTransactions.value.size} Records"
+                    _lastBackupSummary.value = summary
+                    AppPreferencesManager.setLastBackupSummary(getApplication(), summary)
+                    AppPreferencesManager.setLastBackupTime(getApplication(), System.currentTimeMillis())
                 }
+                success
+            } else {
+                false
             }
         }
-        return withContext(Dispatchers.IO) {
+    }
+
+    fun signInWithGoogle(onComplete: ((Boolean, String) -> Unit)? = null) {
+        viewModelScope.launch {
             _isCloudSyncing.value = true
-            val email = _driveAccountEmail.value.trim().ifBlank {
-                AppPreferencesManager.getGoogleAccountEmail(getApplication()).trim().ifBlank {
-                    GoogleDriveBackupManager.getConnectedAccount(getApplication())
+            when (val result = authManager.signInWithGoogle()) {
+                is AuthResult.Success -> {
+                    _isCloudSyncing.value = false
+                    val email = result.user.email ?: ""
+                    _driveAccountEmail.value = email
+                    AppPreferencesManager.setGoogleAccountEmail(getApplication(), email)
+                    val name = result.user.displayName ?: email.substringBefore("@")
+                    _userName.value = name
+                    AppPreferencesManager.setUserName(getApplication(), name)
+                    _isDriveConnected.value = true
+                    AppPreferencesManager.setGoogleDriveConnected(getApplication(), true)
+                    _snackbarMessage.emit("Connected: $email")
+                    onComplete?.invoke(true, "Signed in as $email.")
+                }
+                is AuthResult.Cancelled -> {
+                    _isCloudSyncing.value = false
+                    onComplete?.invoke(false, "Sign-in cancelled.")
+                }
+                is AuthResult.Error -> {
+                    _isCloudSyncing.value = false
+                    _snackbarMessage.emit("Sign-in failed: ${result.message}")
+                    onComplete?.invoke(false, "Error: ${result.message}")
                 }
             }
-            val books = repository.allBooks.first()
-            val txs = repository.getAllTransactionsDirect()
-            val success = CloudStorageManager.autoSyncToCloud(getApplication(), email, books, txs)
-            val summary = AppPreferencesManager.getLastBackupSummary(getApplication())
-            _lastBackupSummary.value = summary
-            _isCloudSyncing.value = false
-            success
         }
     }
 
@@ -304,57 +345,22 @@ class LedgerViewModel(
         onConfirmCloudRestore: ((com.example.data.io.BackupResult) -> Unit)? = null,
         onComplete: (foundCloudData: Boolean, message: String) -> Unit
     ) {
-        val cleanEmail = email.trim()
-        val cleanName = if (name.isBlank()) {
-            cleanEmail.substringBefore("@").replace(".", " ")
-                .replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString() }
-        } else name.trim()
-
-        _driveAccountEmail.value = cleanEmail
-        _userName.value = cleanName
-        AppPreferencesManager.setGoogleAccountEmail(getApplication(), cleanEmail)
-        AppPreferencesManager.setUserName(getApplication(), cleanName)
-        GoogleDriveBackupManager.setConnectedAccount(getApplication(), cleanEmail)
-
-        viewModelScope.launch {
-            _isCloudSyncing.value = true
-            val cloudResult = CloudStorageManager.fetchCloudData(getApplication(), cleanEmail)
-            _isCloudSyncing.value = false
-            val currentBooks = repository.allBooks.first()
-            val currentTxs = repository.getAllTransactionsDirect()
-            val hasExistingData = currentBooks.isNotEmpty() || currentTxs.isNotEmpty()
-
-            if (cloudResult.success && cloudResult.books.isNotEmpty()) {
-                if (hasExistingData && onConfirmCloudRestore != null) {
-                    onConfirmCloudRestore(cloudResult)
-                    onComplete(true, "Connected $cleanEmail. Found ${cloudResult.books.size} books in Cloud Vault. Please confirm before restoring.")
-                } else {
-                    repository.restoreAllData(cloudResult.books, cloudResult.transactions)
-                    val restoredBooks = repository.activeBooks.first()
-                    if (restoredBooks.isNotEmpty()) {
-                        _selectedBookId.value = restoredBooks.first().id
-                    }
-                    _lastBackupSummary.value = "${cloudResult.books.size} Books • ${cloudResult.transactions.size} Records"
-                    AppPreferencesManager.setLastBackupSummary(getApplication(), _lastBackupSummary.value)
-                    _snackbarMessage.emit("Restored ${cloudResult.books.size} books and ${cloudResult.transactions.size} records from Cloud")
-                    onComplete(true, "Found existing records! Restored ${cloudResult.books.size} books and ${cloudResult.transactions.size} records.")
-                }
-            } else {
-                // Brand new user or no prior cloud data: starts clean
-                _snackbarMessage.emit("Connected Google account $cleanEmail. Auto-sync active.")
-                onComplete(false, "Account connected. All new records will automatically sync to cloud.")
-            }
+        signInWithGoogle { success, msg ->
+            onComplete(success, msg)
         }
     }
 
     fun disconnectAccount() {
         viewModelScope.launch {
+            authManager.signOut()
             AppPreferencesManager.clearUserData(getApplication())
             _driveAccountEmail.value = ""
             _userName.value = ""
             _profilePhotoPath.value = ""
             _lastBackupSummary.value = ""
-            _snackbarMessage.emit("Disconnected Google account")
+            _isDriveConnected.value = false
+            AppPreferencesManager.setGoogleDriveConnected(getApplication(), false)
+            _snackbarMessage.emit("Disconnected")
         }
     }
 
@@ -382,7 +388,11 @@ class LedgerViewModel(
         viewModelScope.launch {
             val newId = repository.createBook(name, colorHex = colorHex, iconName = iconName)
             _selectedBookId.value = newId
-            _snackbarMessage.emit("Created ledger book '$name'")
+            val created = repository.getBookByIdDirect(newId)
+            if (created != null) {
+                syncService.onLocalBookSaved(created)
+            }
+            _snackbarMessage.emit("Created '$name'")
             triggerAutoSync()
         }
     }
@@ -426,7 +436,11 @@ class LedgerViewModel(
                 repository.insertTransactions(records)
             }
             _selectedBookId.value = bookId
-            _snackbarMessage.emit("Imported '$bookName' with ${records.size} transactions")
+            val created = repository.getBookByIdDirect(bookId)
+            if (created != null) {
+                syncService.onLocalBookSaved(created)
+            }
+            _snackbarMessage.emit("Imported '$bookName' (${records.size} entries)")
             triggerAutoSync()
             onDone(bookId)
         }
@@ -435,7 +449,8 @@ class LedgerViewModel(
     fun updateBook(book: LedgerBook) {
         viewModelScope.launch {
             repository.updateBook(book)
-            _snackbarMessage.emit("Updated ledger book '${book.name}'")
+            syncService.onLocalBookSaved(book)
+            _snackbarMessage.emit("Updated '${book.name}'")
             triggerAutoSync()
         }
     }
@@ -444,7 +459,11 @@ class LedgerViewModel(
         viewModelScope.launch {
             repository.archiveBook(bookId, isArchived)
             val action = if (isArchived) "Archived" else "Restored"
-            _snackbarMessage.emit("$action ledger book")
+            val updated = repository.getBookByIdDirect(bookId)
+            if (updated != null) {
+                syncService.onLocalBookSaved(updated)
+            }
+            _snackbarMessage.emit("$action book")
             if (isArchived && _selectedBookId.value == bookId) {
                 val remaining = repository.activeBooks.first()
                 if (remaining.isNotEmpty()) {
@@ -458,7 +477,8 @@ class LedgerViewModel(
     fun deleteBook(bookId: Long) {
         viewModelScope.launch {
             repository.deleteBook(bookId)
-            _snackbarMessage.emit("Deleted ledger book")
+            syncService.onLocalBookDeleted(bookId)
+            _snackbarMessage.emit("Deleted book")
             val remaining = repository.activeBooks.first()
             if (remaining.isNotEmpty()) {
                 _selectedBookId.value = remaining.first().id
@@ -476,7 +496,7 @@ class LedgerViewModel(
     fun restoreAllData(books: List<LedgerBook>, transactions: List<TransactionRecord>) {
         viewModelScope.launch {
             repository.restoreAllData(books, transactions)
-            _snackbarMessage.emit("Restored ${books.size} books and ${transactions.size} entries!")
+            _snackbarMessage.emit("Restored ${books.size} books, ${transactions.size} entries")
             triggerAutoSync()
         }
     }
@@ -491,18 +511,18 @@ class LedgerViewModel(
         paymentMode: String = "Cash"
     ) {
         viewModelScope.launch {
-            repository.insertTransaction(
-                TransactionRecord(
-                    ledgerBookId = bookId,
-                    type = type,
-                    amount = amount,
-                    category = category.trim(),
-                    timestamp = timestamp,
-                    memo = title.trim(),
-                    paymentMode = paymentMode
-                )
+            val record = TransactionRecord(
+                ledgerBookId = bookId,
+                type = type,
+                amount = amount,
+                category = category.trim(),
+                timestamp = timestamp,
+                memo = title.trim(),
+                paymentMode = paymentMode
             )
-            _snackbarMessage.emit("Logged ${type.label} (${paymentMode}): ${String.format("%.2f", amount)}")
+            val id = repository.insertTransaction(record)
+            syncService.onLocalTransactionSaved(record.copy(id = id))
+            _snackbarMessage.emit("Logged ${type.label}: ${String.format("%.2f", amount)}")
             triggerAutoSync()
         }
     }
@@ -534,7 +554,8 @@ class LedgerViewModel(
                 customIncomeCategories = incomeCats.distinct().joinToString("||")
             )
             repository.updateBook(updated)
-            _snackbarMessage.emit("Categories updated for ${book.name}")
+            syncService.onLocalBookSaved(updated)
+            _snackbarMessage.emit("Categories updated")
             triggerAutoSync()
         }
     }
@@ -576,13 +597,13 @@ class LedgerViewModel(
         }
 
         viewModelScope.launch {
-            repository.updateBook(
-                targetBook.copy(
-                    customExpenseCategories = curExp.joinToString("||"),
-                    customIncomeCategories = curInc.joinToString("||")
-                )
+            val updated = targetBook.copy(
+                customExpenseCategories = curExp.joinToString("||"),
+                customIncomeCategories = curInc.joinToString("||")
             )
-            _snackbarMessage.emit("Imported $added categories ($skipped duplicates skipped)")
+            repository.updateBook(updated)
+            syncService.onLocalBookSaved(updated)
+            _snackbarMessage.emit("Imported $added categories")
             triggerAutoSync()
         }
         return Pair(added, skipped)
@@ -591,7 +612,8 @@ class LedgerViewModel(
     fun updateTransaction(transaction: TransactionRecord) {
         viewModelScope.launch {
             repository.updateTransaction(transaction)
-            _snackbarMessage.emit("Transaction updated")
+            syncService.onLocalTransactionSaved(transaction)
+            _snackbarMessage.emit("Updated entry")
             triggerAutoSync()
         }
     }
@@ -599,7 +621,8 @@ class LedgerViewModel(
     fun deleteTransaction(transactionId: Long) {
         viewModelScope.launch {
             repository.deleteTransaction(transactionId)
-            _snackbarMessage.emit("Transaction deleted")
+            syncService.onLocalTransactionDeleted(transactionId)
+            _snackbarMessage.emit("Deleted entry")
             triggerAutoSync()
         }
     }
@@ -607,7 +630,7 @@ class LedgerViewModel(
     fun duplicateTransaction(transactionId: Long) {
         viewModelScope.launch {
             repository.duplicateTransaction(transactionId)
-            _snackbarMessage.emit("Transaction duplicated")
+            _snackbarMessage.emit("Duplicated entry")
             triggerAutoSync()
         }
     }

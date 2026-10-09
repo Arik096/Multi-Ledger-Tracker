@@ -1,0 +1,83 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidTimestamp(val) {
+      return val is timestamp && val <= request.time;
+    }
+
+    function isValidUser(data, userId) {
+      return data.userId == userId &&
+             data.email is string &&
+             data.email.size() > 0 &&
+             (!('displayName' in data) || data.displayName is string) &&
+             (!('photoUrl' in data) || data.photoUrl is string) &&
+             (!('lastSyncTime' in data) || isValidTimestamp(data.lastSyncTime)) &&
+             (!('createdAt' in data) || isValidTimestamp(data.createdAt));
+    }
+
+    function isValidLedgerBook(data, userId) {
+      return data.id is string &&
+             data.id.size() > 0 &&
+             data.userId == userId &&
+             data.name is string &&
+             data.name.size() > 0 && data.name.size() <= 100 &&
+             (!('currencySymbol' in data) || (data.currencySymbol is string && data.currencySymbol.size() <= 10)) &&
+             (!('currencyCode' in data) || (data.currencyCode is string && data.currencyCode.size() <= 10)) &&
+             (!('colorHex' in data) || data.colorHex is int) &&
+             (!('iconName' in data) || (data.iconName is string && data.iconName.size() <= 50)) &&
+             (!('isArchived' in data) || data.isArchived is bool) &&
+             (!('customCategories' in data) || data.customCategories is string) &&
+             (!('isCategoryEnabled' in data) || data.isCategoryEnabled is bool) &&
+             (!('isCategoryMandatory' in data) || data.isCategoryMandatory is bool) &&
+             (!('isTransactionTypeEnabled' in data) || data.isTransactionTypeEnabled is bool) &&
+             (!('isTransactionTypeMandatory' in data) || data.isTransactionTypeMandatory is bool) &&
+             (!('createdAt' in data) || isValidTimestamp(data.createdAt)) &&
+             (!('updatedAt' in data) || isValidTimestamp(data.updatedAt));
+    }
+
+    function isValidTransaction(data, userId) {
+      return data.id is string &&
+             data.id.size() > 0 &&
+             data.userId == userId &&
+             data.bookId is string &&
+             data.bookId.size() > 0 &&
+             data.type in ['IN', 'OUT'] &&
+             data.amount is number &&
+             data.amount >= 0 &&
+             data.category is string &&
+             data.category.size() > 0 && data.category.size() <= 100 &&
+             (!('timestamp' in data) || (data.timestamp is int && data.timestamp > 0)) &&
+             (!('memo' in data) || (data.memo is string && data.memo.size() <= 500)) &&
+             (!('paymentMode' in data) || (data.paymentMode is string && data.paymentMode.size() <= 50)) &&
+             (!('createdAt' in data) || isValidTimestamp(data.createdAt)) &&
+             (!('updatedAt' in data) || isValidTimestamp(data.updatedAt));
+    }
+
+    match /users/{userId} {
+      allow get, list: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidUser(request.resource.data, userId);
+      allow delete: if isOwner(userId);
+
+      match /books/{bookId} {
+        allow get, list: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidLedgerBook(request.resource.data, userId);
+        allow delete: if isOwner(userId);
+      }
+
+      match /transactions/{transactionId} {
+        allow get, list: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidTransaction(request.resource.data, userId);
+        allow delete: if isOwner(userId);
+      }
+    }
+  }
+}

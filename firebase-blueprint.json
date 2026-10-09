@@ -1,0 +1,177 @@
+{
+  "entities": {
+    "user": {
+      "title": "UserProfile",
+      "description": "User account profile and synchronization metadata",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID"
+        },
+        "email": {
+          "type": "string",
+          "description": "User email address"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name"
+        },
+        "photoUrl": {
+          "type": "string",
+          "description": "Avatar image URL"
+        },
+        "lastSyncTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of last synchronization written via FieldValue.serverTimestamp()"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Account registration timestamp written via FieldValue.serverTimestamp()"
+        }
+      },
+      "required": ["userId", "email"]
+    },
+    "ledgerBook": {
+      "title": "LedgerBook",
+      "description": "A financial ledger book belonging to a user",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique book identifier"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner user UID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the ledger book"
+        },
+        "currencySymbol": {
+          "type": "string",
+          "description": "Currency symbol, e.g. ৳ or $"
+        },
+        "currencyCode": {
+          "type": "string",
+          "description": "ISO 4217 currency code, e.g. BDT or USD"
+        },
+        "colorHex": {
+          "type": "integer",
+          "description": "Theme color in ARGB hex format"
+        },
+        "iconName": {
+          "type": "string",
+          "description": "Icon identifier name"
+        },
+        "isArchived": {
+          "type": "boolean",
+          "description": "Whether this book is archived"
+        },
+        "customCategories": {
+          "type": "string",
+          "description": "Delimited list of custom categories"
+        },
+        "isCategoryEnabled": {
+          "type": "boolean",
+          "description": "Category requirement toggle"
+        },
+        "isCategoryMandatory": {
+          "type": "boolean",
+          "description": "Mandatory category toggle"
+        },
+        "isTransactionTypeEnabled": {
+          "type": "boolean",
+          "description": "Transaction type toggle"
+        },
+        "isTransactionTypeMandatory": {
+          "type": "boolean",
+          "description": "Mandatory type toggle"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation written via FieldValue.serverTimestamp()"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of update written via FieldValue.serverTimestamp()"
+        }
+      },
+      "required": ["id", "userId", "name"]
+    },
+    "transaction": {
+      "title": "TransactionRecord",
+      "description": "An income or expense transaction in a ledger book",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique transaction identifier"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner user UID"
+        },
+        "bookId": {
+          "type": "string",
+          "description": "ID of the parent ledger book"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["IN", "OUT"],
+          "description": "Transaction direction (IN or OUT)"
+        },
+        "amount": {
+          "type": "number",
+          "description": "Transaction monetary amount"
+        },
+        "category": {
+          "type": "string",
+          "description": "Transaction category"
+        },
+        "timestamp": {
+          "type": "integer",
+          "description": "Transaction date in epoch milliseconds"
+        },
+        "memo": {
+          "type": "string",
+          "description": "Optional memo or description note"
+        },
+        "paymentMode": {
+          "type": "string",
+          "description": "Payment method"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation written via FieldValue.serverTimestamp()"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of update written via FieldValue.serverTimestamp()"
+        }
+      },
+      "required": ["id", "userId", "bookId", "type", "amount", "category"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "user",
+      "description": "User profile document containing account and sync metadata"
+    },
+    "/users/{userId}/books/{bookId}": {
+      "schema": "ledgerBook",
+      "description": "Subcollection of financial ledger books owned by the user"
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": "transaction",
+      "description": "Subcollection of financial transaction records owned by the user"
+    }
+  }
+}

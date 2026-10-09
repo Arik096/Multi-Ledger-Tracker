@@ -508,7 +508,7 @@ fun UserProfileScreen(
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = "Connect Google Account",
+                        text = "Sign in to Firestore Cloud",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -517,15 +517,47 @@ fun UserProfileScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
-                        text = "Enter your Google account email to link your isolated Google Drive AppData folder. All transactions, ledger books, and custom categories will mirror securely to your Drive AppData storage.",
+                        text = "Sign in with Google to save your books and entries to Firestore cloud and sync across devices.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
+                    Button(
+                        onClick = {
+                            isConnecting = true
+                            viewModel.signInWithGoogle { success, msg ->
+                                isConnecting = false
+                                if (success) {
+                                    showConnectGoogleDialog = false
+                                    statusMessage = msg
+                                    isSuccessStatus = true
+                                }
+                            }
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .testTag("btn_one_tap_google_sign_in")
+                    ) {
+                        Icon(Icons.Default.CloudSync, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Sign in with Google", fontWeight = FontWeight.Bold)
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        HorizontalDivider(modifier = Modifier.weight(1f))
+                        Text(" or enter email ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        HorizontalDivider(modifier = Modifier.weight(1f))
+                    }
+
                     OutlinedTextField(
                         value = emailInput,
                         onValueChange = { emailInput = it },
-                        label = { Text("Google Account Email") },
+                        label = { Text("Account Email") },
                         placeholder = { Text("example@gmail.com") },
                         leadingIcon = {
                             Icon(Icons.Default.CloudQueue, contentDescription = null)
@@ -1657,12 +1689,12 @@ private fun GoogleCloudSyncCard(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "Cloud Backup Vault",
+                            text = "Firestore Cloud Sync",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Google Drive • Safe from device resets",
+                            text = "Live Firestore database • Auto sync",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -1701,7 +1733,7 @@ private fun GoogleCloudSyncCard(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = if (isConnected) "Connected: $email" else "Not connected",
+                                text = if (isConnected) "Connected: $email" else "Not signed in",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface,
@@ -1715,9 +1747,9 @@ private fun GoogleCloudSyncCard(
 
                     Text(
                         text = if (isConnected) {
-                            "All books and entries automatically backup to your Google Drive in real-time. If you switch phones or clear storage, signing in restores everything."
+                            "All books and entries automatically sync to Firestore in real-time. Signing in on any device restores everything."
                         } else {
-                            "Connect your Google account to keep your entries backed up safely in Google Drive."
+                            "Sign in with Google to save your records to Firestore cloud and keep them safe."
                         },
                         fontSize = 12.sp,
                         lineHeight = 17.sp,
@@ -1743,7 +1775,7 @@ private fun GoogleCloudSyncCard(
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = "Vault Status: $lastBackupSummary",
+                                    text = "Firestore Status: $lastBackupSummary",
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Medium,
                                     color = MaterialTheme.colorScheme.onSurface
@@ -1820,7 +1852,7 @@ private fun GoogleCloudSyncCard(
                 ) {
                     Icon(Icons.Default.CloudSync, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Connect Google Account & Restore Data", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text("Sign in with Google", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }

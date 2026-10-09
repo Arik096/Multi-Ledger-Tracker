@@ -15,6 +15,10 @@ class LedgerRepository(
     val allBooks: Flow<List<LedgerBook>> = ledgerBookDao.getAllBooks()
     val activeBooks: Flow<List<LedgerBook>> = ledgerBookDao.getActiveBooks()
 
+    suspend fun getActiveBooksDirect(): List<LedgerBook> = ledgerBookDao.getAllBooksDirect()
+    suspend fun insertOrUpdateTransaction(transaction: TransactionRecord): Long =
+        transactionDao.insertTransaction(transaction)
+
     fun getTransactionsForBook(bookId: Long): Flow<List<TransactionRecord>> =
         transactionDao.getTransactionsByLedger(bookId)
 
