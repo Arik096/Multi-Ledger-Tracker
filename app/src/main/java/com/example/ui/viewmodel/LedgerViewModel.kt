@@ -16,7 +16,6 @@ import com.example.data.firestore.FirestoreSyncService
 import com.example.data.firestore.SyncStatus
 import com.example.data.io.BackupResult
 import com.example.data.io.CsvExporterImporter
-import com.example.data.io.GoogleDriveBackupManager
 import com.example.data.io.ParsedImportRow
 import com.example.data.io.PdfReportGenerator
 import com.example.data.model.CategoryConstants
@@ -29,6 +28,7 @@ import com.example.data.preferences.AppPreferencesManager
 import com.example.data.preferences.ModernPalette
 import com.example.data.preferences.ThemeMode
 import com.example.data.repository.LedgerRepository
+import com.example.util.AmountFormatter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -102,14 +102,14 @@ class LedgerViewModel(
     private val _modernPalette = MutableStateFlow(AppPreferencesManager.getModernPalette(application))
     val modernPalette: StateFlow<ModernPalette> = _modernPalette.asStateFlow()
 
+    private val _dynamicColor = MutableStateFlow(AppPreferencesManager.isDynamicColor(application))
+    val dynamicColor: StateFlow<Boolean> = _dynamicColor.asStateFlow()
+
+    private val _amountPrecision = MutableStateFlow(AppPreferencesManager.getAmountPrecision(application))
+    val amountPrecision: StateFlow<Int> = _amountPrecision.asStateFlow()
+
     private val _driveAccountEmail = MutableStateFlow(AppPreferencesManager.getGoogleAccountEmail(application))
     val driveAccountEmail: StateFlow<String> = _driveAccountEmail.asStateFlow()
-
-    private val _isDriveConnected = MutableStateFlow(AppPreferencesManager.isGoogleDriveConnected(application))
-    val isDriveConnected: StateFlow<Boolean> = _isDriveConnected.asStateFlow()
-
-    private val _googleDriveFolderName = MutableStateFlow(AppPreferencesManager.getGoogleDriveFolderName(application))
-    val googleDriveFolderName: StateFlow<String> = _googleDriveFolderName.asStateFlow()
 
     private val _isAutoBackupEnabled = MutableStateFlow(AppPreferencesManager.isAutoBackupEnabled(application))
     val isAutoBackupEnabled: StateFlow<Boolean> = _isAutoBackupEnabled.asStateFlow()
@@ -117,7 +117,7 @@ class LedgerViewModel(
     private val _isWifiOnlySync = MutableStateFlow(AppPreferencesManager.isWifiOnlySync(application))
     val isWifiOnlySync: StateFlow<Boolean> = _isWifiOnlySync.asStateFlow()
 
-    private val _lastBackupSummary = MutableStateFlow(GoogleDriveBackupManager.getLastBackupSummary(application))
+    private val _lastBackupSummary = MutableStateFlow(AppPreferencesManager.getLastBackupSummary(application))
     val lastBackupSummary: StateFlow<String> = _lastBackupSummary.asStateFlow()
 
     private val _userName = MutableStateFlow(AppPreferencesManager.getUserName(application))
@@ -136,6 +136,14 @@ class LedgerViewModel(
         emails[0].isNotBlank()
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AppPreferencesManager.getGoogleAccountEmail(application).isNotBlank())
 
+    fun formatAmount(amount: Double, includeCommas: Boolean = false): String {
+        return AmountFormatter.format(amount, _amountPrecision.value, includeCommas)
+    }
+
+    fun formatAmountWithCurrency(symbol: String, amount: Double, includeCommas: Boolean = false): String {
+        return AmountFormatter.formatWithCurrency(symbol, amount, _amountPrecision.value, includeCommas)
+    }
+
     init {
         viewModelScope.launch {
             authManager.authStateFlow().collectLatest { user ->
@@ -147,10 +155,9 @@ class LedgerViewModel(
                     val name = user.displayName ?: email.substringBefore("@")
                     _userName.value = name
                     AppPreferencesManager.setUserName(getApplication(), name)
-                    _isDriveConnected.value = true
-                    AppPreferencesManager.setGoogleDriveConnected(getApplication(), true)
-                } else {
-                    _isDriveConnected.value = false
+                    val photo = user.photoUrl?.toString() ?: ""
+                    _profilePhotoPath.value = photo
+                    AppPreferencesManager.setProfilePhotoPath(getApplication(), photo)
                 }
             }
         }
@@ -249,26 +256,6 @@ class LedgerViewModel(
 
     private var lastToastTime = 0L
 
-    init {
-        viewModelScope.launch {
-            authManager.authStateFlow().collectLatest { user ->
-                syncService.onUserAuthenticated(user)
-                if (user != null) {
-                    val email = user.email ?: ""
-                    _driveAccountEmail.value = email
-                    AppPreferencesManager.setGoogleAccountEmail(getApplication(), email)
-                    val name = user.displayName ?: email.substringBefore("@")
-                    _userName.value = name
-                    AppPreferencesManager.setUserName(getApplication(), name)
-                    _isDriveConnected.value = true
-                    AppPreferencesManager.setGoogleDriveConnected(getApplication(), true)
-                } else {
-                    _isDriveConnected.value = false
-                }
-            }
-        }
-    }
-
     fun triggerAutoSync(showToast: Boolean = false, toastMessage: String = "Syncing...") {
         viewModelScope.launch {
             val user = authManager.currentUser
@@ -314,17 +301,21 @@ class LedgerViewModel(
             _isCloudSyncing.value = true
             when (val result = authManager.signInWithGoogle()) {
                 is AuthResult.Success -> {
-                    _isCloudSyncing.value = false
                     val email = result.user.email ?: ""
                     _driveAccountEmail.value = email
                     AppPreferencesManager.setGoogleAccountEmail(getApplication(), email)
                     val name = result.user.displayName ?: email.substringBefore("@")
                     _userName.value = name
                     AppPreferencesManager.setUserName(getApplication(), name)
-                    _isDriveConnected.value = true
-                    AppPreferencesManager.setGoogleDriveConnected(getApplication(), true)
-                    _snackbarMessage.emit("Connected: $email")
-                    onComplete?.invoke(true, "Signed in as $email.")
+                    val photo = result.user.photoUrl?.toString() ?: ""
+                    _profilePhotoPath.value = photo
+                    AppPreferencesManager.setProfilePhotoPath(getApplication(), photo)
+
+                    // Look for previous cloud data and restore if available, else start clean
+                    val (foundData, restoreMsg) = syncService.checkAndRestorePreviousData(result.user.uid)
+                    _isCloudSyncing.value = false
+                    _snackbarMessage.emit(restoreMsg)
+                    onComplete?.invoke(true, restoreMsg)
                 }
                 is AuthResult.Cancelled -> {
                     _isCloudSyncing.value = false
@@ -358,9 +349,7 @@ class LedgerViewModel(
             _userName.value = ""
             _profilePhotoPath.value = ""
             _lastBackupSummary.value = ""
-            _isDriveConnected.value = false
-            AppPreferencesManager.setGoogleDriveConnected(getApplication(), false)
-            _snackbarMessage.emit("Disconnected")
+            _snackbarMessage.emit("Signed out of Google account")
         }
     }
 
@@ -491,6 +480,10 @@ class LedgerViewModel(
 
     suspend fun getAllTransactionsDirect(): List<TransactionRecord> {
         return repository.getAllTransactionsDirect()
+    }
+
+    fun restoreFromBackupResult(result: BackupResult) {
+        restoreAllData(result.books, result.transactions)
     }
 
     fun restoreAllData(books: List<LedgerBook>, transactions: List<TransactionRecord>) {
@@ -801,17 +794,16 @@ class LedgerViewModel(
         triggerAutoSync()
     }
 
-    fun setDriveAccountEmail(email: String) {
-        _driveAccountEmail.value = email
-        AppPreferencesManager.setGoogleAccountEmail(getApplication(), email)
-        GoogleDriveBackupManager.setConnectedAccount(getApplication(), email)
+    fun setAmountPrecision(precision: Int) {
+        val safe = precision.coerceIn(0, 4)
+        _amountPrecision.value = safe
+        AppPreferencesManager.setAmountPrecision(getApplication(), safe)
         triggerAutoSync()
     }
 
-    fun setDriveConnected(connected: Boolean) {
-        _isDriveConnected.value = connected
-        AppPreferencesManager.setGoogleDriveConnected(getApplication(), connected)
-        triggerAutoSync()
+    fun setDynamicColor(enabled: Boolean) {
+        _dynamicColor.value = enabled
+        AppPreferencesManager.setDynamicColor(getApplication(), enabled)
     }
 
     fun setAutoBackupEnabled(enabled: Boolean) {
@@ -826,56 +818,10 @@ class LedgerViewModel(
         triggerAutoSync()
     }
 
-    fun setUserName(name: String) {
-        _userName.value = name
-        AppPreferencesManager.setUserName(getApplication(), name)
-        triggerAutoSync()
-    }
-
     fun setDefaultCurrency(currency: String) {
         _defaultCurrency.value = currency
         AppPreferencesManager.setDefaultCurrency(getApplication(), currency)
         triggerAutoSync()
-    }
-
-    fun setGoogleDriveFolderName(folderName: String) {
-        val clean = folderName.trim().ifBlank { AppPreferencesManager.DEFAULT_DRIVE_FOLDER }
-        AppPreferencesManager.setGoogleDriveFolderName(getApplication(), clean)
-        _googleDriveFolderName.value = clean
-        triggerAutoSync(showToast = true, toastMessage = "Google Drive folder set to '$clean'")
-    }
-
-    suspend fun performGoogleDriveBackup(
-        context: Context,
-        folderName: String = _googleDriveFolderName.value
-    ): BackupResult {
-        val books = allBooks.value
-        val txs = allTransactions.value
-        val result = GoogleDriveBackupManager.backupToGoogleDrive(context, books, txs, folderName)
-        if (result.success) {
-            val summary = GoogleDriveBackupManager.getLastBackupSummary(context)
-            _lastBackupSummary.value = summary
-            AppPreferencesManager.setLastBackupSummary(context, summary)
-            AppPreferencesManager.setLastBackupTime(context, System.currentTimeMillis())
-            _snackbarMessage.emit("Backup saved to Google Drive folder '$folderName'")
-        } else {
-            _snackbarMessage.emit("Backup failed: ${result.message}")
-        }
-        return result
-    }
-
-    suspend fun performGoogleDriveRestore(
-        context: Context,
-        folderName: String = _googleDriveFolderName.value
-    ): BackupResult {
-        val result = GoogleDriveBackupManager.restoreFromGoogleDrive(context, folderName)
-        if (result.success && result.books.isNotEmpty()) {
-            restoreAllData(result.books, result.transactions)
-            _snackbarMessage.emit("Restored ${result.books.size} books and ${result.transactions.size} records from '$folderName'")
-        } else if (!result.success) {
-            _snackbarMessage.emit(result.message)
-        }
-        return result
     }
 
     companion object {

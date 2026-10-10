@@ -86,6 +86,7 @@ import com.example.ui.components.ImportBookCsvDialog
 import com.example.ui.theme.CashInGreen
 import com.example.ui.theme.CashOutRed
 import com.example.ui.viewmodel.LedgerViewModel
+import com.example.util.AmountFormatter
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -108,6 +109,7 @@ fun LedgersScreen(
     val allBooks by viewModel.allBooks.collectAsStateWithLifecycle()
     val selectedBookId by viewModel.selectedBookId.collectAsStateWithLifecycle()
     val allTransactions by viewModel.allTransactions.collectAsStateWithLifecycle()
+    val amountPrecision by viewModel.amountPrecision.collectAsStateWithLifecycle()
 
     var showCreateDialog by remember { mutableStateOf(false) }
     var showImportCsvDialog by remember { mutableStateOf(false) }
@@ -481,7 +483,7 @@ fun LedgersScreen(
                                     Spacer(modifier = Modifier.height(6.dp))
 
                                     // Balance pill
-                                    val formattedBalance = String.format(Locale.US, "%,.2f", balance)
+                                    val formattedBalance = AmountFormatter.format(balance, amountPrecision, includeCommas = true)
                                     Surface(
                                         shape = RoundedCornerShape(8.dp),
                                         color = if (balance >= 0) CashInGreen.copy(alpha = 0.12f) else CashOutRed.copy(alpha = 0.12f)

@@ -60,6 +60,7 @@ import com.example.data.model.TransactionRecord
 import com.example.data.model.TransactionType
 import com.example.ui.theme.CashInGreen
 import com.example.ui.theme.CashOutRed
+import com.example.util.AmountFormatter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -68,6 +69,7 @@ import java.util.Locale
 fun TransactionRowItem(
     transaction: TransactionRecord,
     currencySymbol: String = "",
+    precision: Int = 0,
     onClick: () -> Unit,
     onEditClick: () -> Unit,
     onDuplicateClick: () -> Unit,
@@ -161,8 +163,9 @@ fun TransactionRowItem(
             Column(
                 horizontalAlignment = Alignment.End
             ) {
+                val formattedAmount = AmountFormatter.format(transaction.amount, precision, includeCommas = true)
                 Text(
-                    text = "$prefix${String.format(Locale.US, "%,.2f", transaction.amount)}",
+                    text = "$prefix$formattedAmount",
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp

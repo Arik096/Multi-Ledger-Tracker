@@ -52,6 +52,7 @@ import com.example.ui.theme.CashOutRed
 import com.example.ui.theme.CategoryColors
 import com.example.ui.viewmodel.CategorySummary
 import com.example.ui.viewmodel.TrendPoint
+import com.example.util.AmountFormatter
 import java.util.Locale
 import kotlin.math.max
 
@@ -722,6 +723,7 @@ fun CategoryExpensesBreakdownCard(
     filterDescription: String,
     currencySymbol: String = "৳",
     onCategoryClick: (String) -> Unit = {},
+    precision: Int = 0,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -772,7 +774,7 @@ fun CategoryExpensesBreakdownCard(
                         softWrap = false
                     )
                     Text(
-                        text = "$currencySymbol${String.format(Locale.US, "%,.2f", totalExpense)}",
+                        text = "$currencySymbol ${AmountFormatter.format(totalExpense, precision, includeCommas = true)}",
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.ExtraBold,
                             color = CashOutRed,
@@ -876,7 +878,7 @@ fun CategoryExpensesBreakdownCard(
                                     // Sum of expenses in this category
                                     Column(horizontalAlignment = Alignment.End) {
                                         Text(
-                                            text = String.format(Locale.US, "%,.2f", item.amount),
+                                            text = AmountFormatter.format(item.amount, precision, includeCommas = true),
                                             style = MaterialTheme.typography.titleSmall.copy(
                                                 fontWeight = FontWeight.Bold
                                             ),

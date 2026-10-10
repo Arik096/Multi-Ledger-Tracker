@@ -11,10 +11,11 @@ enum class ThemeMode {
 }
 
 enum class ModernPalette(val title: String, val subtitle: String) {
-    EMERALD_MINT("Emerald Mint", "Modern Fintech • Obsidian Void"),
-    CYBER_INDIGO("Cyber Indigo", "Electric Indigo • Cyber Cyan"),
-    SUNSET_ROSE("Sunset Rose", "Radiant Rose • Sunset Gold"),
-    TITANIUM_ICE("Titanium Ice", "Minimalist Ice • Cool Slate")
+    EMERALD_MINT("Soft Sage", "Calming Sage • Fresh Mint"),
+    CYBER_INDIGO("Soft Indigo", "Modern Iris • Lavender Tint"),
+    SUNSET_ROSE("Soft Rose", "Warm Coral • Rose Pastel"),
+    TITANIUM_ICE("Soft Slate", "Cool Titanium • Sky Slate"),
+    AMBER_HONEY("Soft Amber", "Warm Honey • Golden Sand")
 }
 
 object AppPreferencesManager {
@@ -22,8 +23,9 @@ object AppPreferencesManager {
 
     private const val KEY_THEME_MODE = "key_theme_mode"
     private const val KEY_MODERN_PALETTE = "key_modern_palette"
+    private const val KEY_DYNAMIC_COLOR = "key_dynamic_color"
+    private const val KEY_AMOUNT_PRECISION = "key_amount_precision"
     private const val KEY_GOOGLE_ACCOUNT_EMAIL = "key_google_account_email"
-    private const val KEY_GOOGLE_DRIVE_CONNECTED = "key_google_drive_connected"
     private const val KEY_AUTO_BACKUP_ENABLED = "key_auto_backup_enabled"
     private const val KEY_WIFI_ONLY_SYNC = "key_wifi_only_sync"
     private const val KEY_LAST_BACKUP_TIME = "key_last_backup_time"
@@ -33,12 +35,10 @@ object AppPreferencesManager {
     private const val KEY_PROFILE_PHOTO_PATH = "key_profile_photo_path"
     private const val KEY_PHYSICAL_CASH_FIELDS = "key_physical_cash_fields"
     private const val KEY_ACCOUNT_CASH_FIELDS = "key_account_cash_fields"
-    private const val KEY_GOOGLE_DRIVE_FOLDER_NAME = "key_google_drive_folder_name"
 
-    private const val DEFAULT_ACCOUNT = "md.arik.ific@gmail.com"
-    private const val DEFAULT_USER_NAME = "Md Arik"
+    private const val DEFAULT_ACCOUNT = ""
+    private const val DEFAULT_USER_NAME = ""
     private const val DEFAULT_CURRENCY = "BDT"
-    const val DEFAULT_DRIVE_FOLDER = "CashBook Records"
 
     val DEFAULT_PHYSICAL_FIELDS = listOf(
         "Bank Asia",
@@ -98,12 +98,20 @@ object AppPreferencesManager {
         getPrefs(context).edit().putString(KEY_GOOGLE_ACCOUNT_EMAIL, email.trim()).apply()
     }
 
-    fun isGoogleDriveConnected(context: Context): Boolean {
-        return getPrefs(context).getBoolean(KEY_GOOGLE_DRIVE_CONNECTED, true)
+    fun isDynamicColor(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_DYNAMIC_COLOR, true)
     }
 
-    fun setGoogleDriveConnected(context: Context, connected: Boolean) {
-        getPrefs(context).edit().putBoolean(KEY_GOOGLE_DRIVE_CONNECTED, connected).apply()
+    fun setDynamicColor(context: Context, enabled: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_DYNAMIC_COLOR, enabled).apply()
+    }
+
+    fun getAmountPrecision(context: Context): Int {
+        return getPrefs(context).getInt(KEY_AMOUNT_PRECISION, 0).coerceIn(0, 4)
+    }
+
+    fun setAmountPrecision(context: Context, precision: Int) {
+        getPrefs(context).edit().putInt(KEY_AMOUNT_PRECISION, precision.coerceIn(0, 4)).apply()
     }
 
     fun isAutoBackupEnabled(context: Context): Boolean {
@@ -120,16 +128,6 @@ object AppPreferencesManager {
 
     fun setWifiOnlySync(context: Context, enabled: Boolean) {
         getPrefs(context).edit().putBoolean(KEY_WIFI_ONLY_SYNC, enabled).apply()
-    }
-
-    fun getGoogleDriveFolderName(context: Context): String {
-        val folder = getPrefs(context).getString(KEY_GOOGLE_DRIVE_FOLDER_NAME, DEFAULT_DRIVE_FOLDER) ?: DEFAULT_DRIVE_FOLDER
-        return if (folder.isBlank()) DEFAULT_DRIVE_FOLDER else folder.trim()
-    }
-
-    fun setGoogleDriveFolderName(context: Context, folderName: String) {
-        val clean = folderName.trim().ifBlank { DEFAULT_DRIVE_FOLDER }
-        getPrefs(context).edit().putString(KEY_GOOGLE_DRIVE_FOLDER_NAME, clean).apply()
     }
 
     fun getLastBackupTime(context: Context): Long {

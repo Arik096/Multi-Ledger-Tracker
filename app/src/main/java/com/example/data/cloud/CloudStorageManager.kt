@@ -9,7 +9,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import androidx.core.content.FileProvider
 import com.example.data.io.BackupResult
-import com.example.data.io.GoogleDriveBackupManager
+import com.example.data.io.JsonBackupHelper
 import com.example.data.model.LedgerBook
 import com.example.data.model.TransactionRecord
 import com.example.data.preferences.AppPreferencesManager
@@ -59,7 +59,7 @@ object CloudStorageManager {
         if (clean.isNotBlank()) return clean
         val prefEmail = AppPreferencesManager.getGoogleAccountEmail(context).trim()
         if (prefEmail.isNotBlank()) return prefEmail
-        return GoogleDriveBackupManager.getConnectedAccount(context)
+        return ""
     }
 
     /**
@@ -77,12 +77,9 @@ object CloudStorageManager {
     suspend fun fetchCloudData(context: Context, email: String): BackupResult = withContext(Dispatchers.IO) {
         val target = getEffectiveAccountEmail(context, email)
         var jsonContent = readJsonData(context, target)
-        if (jsonContent.isNullOrBlank() && target != "md.arik.ific@gmail.com") {
-            jsonContent = readJsonData(context, "md.arik.ific@gmail.com")
-        }
         if (jsonContent != null && jsonContent.length > 20) {
             try {
-                val result = GoogleDriveBackupManager.parseBackupJson(jsonContent)
+                val result = JsonBackupHelper.parseBackupJson(jsonContent)
                 if (result.success && result.books.isNotEmpty()) {
                     return@withContext result
                 }
@@ -104,7 +101,7 @@ object CloudStorageManager {
     ): Boolean = withContext(Dispatchers.IO) {
         val target = getEffectiveAccountEmail(context, email)
         try {
-            val jsonContent = GoogleDriveBackupManager.createBackupJson(target, books, transactions)
+            val jsonContent = JsonBackupHelper.createBackupJson(target, books, transactions)
             val vaultName = getVaultFileName(target)
             val humanName = getHumanReadableFileName(target)
 
@@ -386,7 +383,7 @@ object CloudStorageManager {
      * Reads and parses a backup JSON string.
      */
     fun parseBackupFromJsonString(jsonString: String): BackupResult {
-        return GoogleDriveBackupManager.parseBackupJson(jsonString)
+        return JsonBackupHelper.parseBackupJson(jsonString)
     }
 
     /**
@@ -398,7 +395,7 @@ object CloudStorageManager {
             if (content.isNullOrBlank()) {
                 BackupResult(success = false, message = "The selected file was empty.")
             } else {
-                GoogleDriveBackupManager.parseBackupJson(content)
+                JsonBackupHelper.parseBackupJson(content)
             }
         } catch (e: Exception) {
             BackupResult(success = false, message = "Could not read file: ${e.localizedMessage}")

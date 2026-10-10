@@ -73,6 +73,7 @@ import com.example.ui.screens.CashPositionScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.LedgersScreen
 import com.example.ui.screens.LogEntryScreen
+import com.example.ui.screens.LoginScreen
 import com.example.ui.screens.UserProfileScreen
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.viewmodel.LedgerViewModel
@@ -98,6 +99,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val themeMode by vm.themeMode.collectAsStateWithLifecycle()
             val modernPalette by vm.modernPalette.collectAsStateWithLifecycle()
+            val dynamicColor by vm.dynamicColor.collectAsStateWithLifecycle()
             val isDarkTheme = when (themeMode) {
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
@@ -106,7 +108,8 @@ class MainActivity : ComponentActivity() {
 
             MyApplicationTheme(
                 darkTheme = isDarkTheme,
-                palette = modernPalette
+                palette = modernPalette,
+                dynamicColor = dynamicColor
             ) {
                 MainAppScreen(viewModel = vm)
             }
@@ -141,12 +144,6 @@ fun MainAppScreen(
     var showExitConfirmDialog by remember { mutableStateOf(false) }
     var showSplash by remember { mutableStateOf(true) }
 
-    // First login onboarding state
-    var hasDismissedFirstTimeLogin by remember { mutableStateOf(false) }
-    var firstLoginEmailInput by remember { mutableStateOf("") }
-    var firstLoginNameInput by remember { mutableStateOf("") }
-    var isFirstLoginConnecting by remember { mutableStateOf(false) }
-
     // Keep activeBookInside synced with latest state from allBooks
     val currentActiveBook = remember(activeBookInside, allBooks) {
         if (activeBookInside != null) {
@@ -158,6 +155,16 @@ fun MainAppScreen(
         AnimatedSplashScreen(
             onAnimationFinished = {
                 showSplash = false
+            }
+        )
+        return
+    }
+
+    if (!isAccountConnected && driveAccountEmail.isBlank()) {
+        LoginScreen(
+            viewModel = viewModel,
+            onLoginSuccess = {
+                viewModel.triggerAutoSync(showToast = true)
             }
         )
         return
@@ -414,133 +421,6 @@ fun MainAppScreen(
                 }
             }
         }
-    }
-
-    // First-time Google Account Login Onboarding Modal
-    val showFirstTimeLogin = !isAccountConnected && driveAccountEmail.isBlank() && !hasDismissedFirstTimeLogin
-    if (showFirstTimeLogin) {
-        AlertDialog(
-            onDismissRequest = {
-                // User can dismiss to explore as guest
-                hasDismissedFirstTimeLogin = true
-            },
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.CloudSync,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(36.dp)
-                )
-            },
-            title = {
-                Text(
-                    text = "Sign in to Multi-Ledger",
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                )
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        text = "Sign in with Google to save your records in Firestore cloud and keep them safely synced.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Button(
-                        onClick = {
-                            isFirstLoginConnecting = true
-                            viewModel.signInWithGoogle { success, msg ->
-                                isFirstLoginConnecting = false
-                                hasDismissedFirstTimeLogin = true
-                                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                            .testTag("first_login_google_signin_button")
-                    ) {
-                        Icon(Icons.Default.CloudSync, contentDescription = null, modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Sign in with Google", fontWeight = FontWeight.Bold)
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        androidx.compose.material3.HorizontalDivider(modifier = Modifier.weight(1f))
-                        Text(" or enter email ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        androidx.compose.material3.HorizontalDivider(modifier = Modifier.weight(1f))
-                    }
-
-                    OutlinedTextField(
-                        value = firstLoginEmailInput,
-                        onValueChange = { firstLoginEmailInput = it },
-                        label = { Text("Google Account Email") },
-                        placeholder = { Text("name@gmail.com") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth().testTag("first_login_email_input")
-                    )
-
-                    OutlinedTextField(
-                        value = firstLoginNameInput,
-                        onValueChange = { firstLoginNameInput = it },
-                        label = { Text("Your Name (Optional)") },
-                        placeholder = { Text("e.g. Arik") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth().testTag("first_login_name_input")
-                    )
-
-                    if (isFirstLoginConnecting) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 6.dp)
-                        ) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = "Checking cloud vault for existing records...",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val email = firstLoginEmailInput.trim()
-                        if (email.isBlank() || !email.contains("@")) {
-                            Toast.makeText(context, "Please enter a valid email address", Toast.LENGTH_SHORT).show()
-                            return@Button
-                        }
-                        isFirstLoginConnecting = true
-                        viewModel.connectGoogleAccount(email, firstLoginNameInput.trim()) { foundData, message ->
-                            isFirstLoginConnecting = false
-                            hasDismissedFirstTimeLogin = true
-                            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-                        }
-                    },
-                    enabled = !isFirstLoginConnecting,
-                    modifier = Modifier.testTag("first_login_submit_button")
-                ) {
-                    Text(if (isFirstLoginConnecting) "Connecting..." else "Sign In & Enter")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { hasDismissedFirstTimeLogin = true },
-                    enabled = !isFirstLoginConnecting,
-                    modifier = Modifier.testTag("first_login_skip_button")
-                ) {
-                    Text("Skip for Now")
-                }
-            }
-        )
     }
 
     // Exit App Confirmation Dialog (User requirement: confirmation popup needed before exiting: "when exiting the app, a pop-up will show do you want to exit, after confirmation, it will exit the app")

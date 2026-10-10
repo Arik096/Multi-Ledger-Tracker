@@ -118,6 +118,33 @@ class FirestoreSyncService(
         _syncStatus.value = SyncStatus.Synced(System.currentTimeMillis())
     }
 
+    suspend fun checkAndRestorePreviousData(userId: String): Pair<Boolean, String> = withContext(Dispatchers.IO) {
+        try {
+            _syncStatus.value = SyncStatus.Syncing
+            val remoteBooks = firestoreRepository.getBooksDirect(userId)
+            val remoteTransactions = firestoreRepository.getTransactionsDirect(userId)
+            if (remoteBooks.isNotEmpty() || remoteTransactions.isNotEmpty()) {
+                isApplyingRemoteUpdates = true
+                try {
+                    val mergedBooks = remoteBooks.map { it.toLocalLedgerBook() }
+                    val mergedTxs = remoteTransactions.map { it.toLocalTransactionRecord() }
+                    ledgerRepository.restoreAllData(mergedBooks, mergedTxs)
+                } finally {
+                    isApplyingRemoteUpdates = false
+                }
+                _syncStatus.value = SyncStatus.Synced(System.currentTimeMillis())
+                Pair(true, "Restored ${remoteBooks.size} books and ${remoteTransactions.size} records from cloud.")
+            } else {
+                _syncStatus.value = SyncStatus.Synced(System.currentTimeMillis())
+                Pair(false, "No previous cloud records found. Starting clean.")
+            }
+        } catch (e: Exception) {
+            Log.e("FirestoreSyncService", "Failed to check and restore cloud records", e)
+            _syncStatus.value = SyncStatus.Error(e.localizedMessage ?: "Sync error")
+            Pair(false, "Connected to cloud. Starting ledger.")
+        }
+    }
+
     private fun startRealtimeSync(userId: String) {
         val job = Job()
         observeJob = job

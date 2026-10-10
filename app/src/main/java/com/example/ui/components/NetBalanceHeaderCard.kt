@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.sp
 import com.example.data.model.LedgerBook
 import com.example.ui.theme.CashInGreen
 import com.example.ui.theme.CashOutRed
+import com.example.util.AmountFormatter
 import java.util.Locale
 
 @Composable
@@ -50,6 +51,7 @@ fun NetBalanceHeaderCard(
     totalIncome: Double,
     totalExpense: Double,
     onSwitchBookClick: () -> Unit,
+    precision: Int = 0,
     modifier: Modifier = Modifier
 ) {
     val bookColor = if (book != null) Color(book.colorHex) else MaterialTheme.colorScheme.primary
@@ -154,9 +156,11 @@ fun NetBalanceHeaderCard(
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    val sign = if (isPositive) "" else "-"
+                    val absVal = kotlin.math.abs(netBalance)
+                    val formattedNet = AmountFormatter.format(absVal, precision, includeCommas = true)
                     Text(
-                        text = if (isPositive) String.format(Locale.US, "%,.2f", netBalance)
-                        else "-${String.format(Locale.US, "%,.2f", kotlin.math.abs(netBalance))}",
+                        text = "$sign$formattedNet",
                         color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 32.sp,
                         fontWeight = FontWeight.ExtraBold,
@@ -204,7 +208,7 @@ fun NetBalanceHeaderCard(
                                     fontWeight = FontWeight.Medium
                                 )
                                 Text(
-                                    text = String.format(Locale.US, "%,.2f", totalIncome),
+                                    text = AmountFormatter.format(totalIncome, precision, includeCommas = true),
                                     color = CashInGreen,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
@@ -247,7 +251,7 @@ fun NetBalanceHeaderCard(
                                     fontWeight = FontWeight.Medium
                                 )
                                 Text(
-                                    text = String.format(Locale.US, "%,.2f", totalExpense),
+                                    text = AmountFormatter.format(totalExpense, precision, includeCommas = true),
                                     color = CashOutRed,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,

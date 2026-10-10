@@ -104,6 +104,7 @@ import com.example.ui.components.TransactionRowItem
 import com.example.ui.theme.CashInGreen
 import com.example.ui.theme.CashOutRed
 import com.example.ui.viewmodel.LedgerViewModel
+import com.example.util.AmountFormatter
 import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
@@ -134,6 +135,7 @@ fun HomeScreen(
     val periodTotalIncome by viewModel.periodTotalIncome.collectAsStateWithLifecycle()
     val periodTotalExpense by viewModel.periodTotalExpense.collectAsStateWithLifecycle()
     val periodNetSavings by viewModel.periodNetSavings.collectAsStateWithLifecycle()
+    val amountPrecision by viewModel.amountPrecision.collectAsStateWithLifecycle()
 
     var showBookSwitchSheet by remember { mutableStateOf(false) }
     var showAdvancedFilterDialog by remember { mutableStateOf(false) }
@@ -455,6 +457,7 @@ fun HomeScreen(
                     totalIncome = periodTotalIncome,
                     totalExpense = periodTotalExpense,
                     onSwitchBookClick = { showBookSwitchSheet = true },
+                    precision = amountPrecision,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -468,7 +471,8 @@ fun HomeScreen(
                     currencySymbol = currentBook?.currencySymbol ?: "৳",
                     onCategoryClick = { categoryName ->
                         viewModel.setCategoryFilter(categoryName)
-                    }
+                    },
+                    precision = amountPrecision
                 )
             }
 
@@ -541,6 +545,7 @@ fun CashOutByTransactionTypeCard(
     paymentModes: List<TransactionTypeBreakdown>,
     totalExpense: Double,
     currencySymbol: String,
+    precision: Int = 0,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -588,7 +593,7 @@ fun CashOutByTransactionTypeCard(
                         softWrap = false
                     )
                     Text(
-                        text = "$currencySymbol${String.format(java.util.Locale.US, "%,.2f", totalExpense)}",
+                        text = "$currencySymbol ${AmountFormatter.format(totalExpense, precision, includeCommas = true)}",
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.ExtraBold,
                             color = CashOutRed,
@@ -673,7 +678,7 @@ fun CashOutByTransactionTypeCard(
 
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
-                                        text = "$currencySymbol${String.format(java.util.Locale.US, "%,.2f", mode.totalAmount)}",
+                                        text = "$currencySymbol ${AmountFormatter.format(mode.totalAmount, precision, includeCommas = true)}",
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 14.sp,
                                         color = CashOutRed,
