@@ -91,6 +91,7 @@ import com.example.data.model.TransactionType
 import com.example.ui.theme.CashInGreen
 import com.example.ui.theme.CashOutRed
 import com.example.ui.viewmodel.LedgerViewModel
+import com.example.util.AmountFormatter
 import kotlinx.coroutines.launch
 import java.io.File
 import java.text.NumberFormat
@@ -135,6 +136,7 @@ fun BookInsideScreen(
     val scope = rememberCoroutineScope()
 
     val allTransactions by viewModel.allTransactions.collectAsStateWithLifecycle()
+    val amountPrecision by viewModel.amountPrecision.collectAsStateWithLifecycle()
 
     var searchQuery by remember { mutableStateOf("") }
     var selectedDateFilter by remember { mutableStateOf(BookDateQuickFilter.ALL) }
@@ -803,12 +805,10 @@ fun BookInsideScreen(
                             Row(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                val sign = if (isPositive) "" else "-"
+                                val absNet = kotlin.math.abs(netBalance)
                                 Text(
-                                    text = if (isPositive) {
-                                        "${book.currencySymbol} ${String.format(Locale.US, "%,.2f", netBalance)}"
-                                    } else {
-                                        "-${book.currencySymbol} ${String.format(Locale.US, "%,.2f", kotlin.math.abs(netBalance))}"
-                                    },
+                                    text = "$sign${book.currencySymbol} ${AmountFormatter.format(absNet, amountPrecision, includeCommas = true)}",
                                     color = Color.White,
                                     fontSize = 30.sp,
                                     fontWeight = FontWeight.ExtraBold,
@@ -857,7 +857,7 @@ fun BookInsideScreen(
                                                 letterSpacing = 0.5.sp,
                                                 maxLines = 1
                                             )
-                                            val formattedIn = formatDisplayAmount(totalIn)
+                                            val formattedIn = formatDisplayAmount(totalIn, amountPrecision)
                                             val inFontSize = if (formattedIn.length > 9) 12.sp else if (formattedIn.length > 6) 13.sp else 15.sp
                                             Text(
                                                 text = "+${book.currencySymbol}$formattedIn",
@@ -905,7 +905,7 @@ fun BookInsideScreen(
                                                 letterSpacing = 0.5.sp,
                                                 maxLines = 1
                                             )
-                                            val formattedOut = formatDisplayAmount(totalOut)
+                                            val formattedOut = formatDisplayAmount(totalOut, amountPrecision)
                                             val outFontSize = if (formattedOut.length > 9) 12.sp else if (formattedOut.length > 6) 13.sp else 15.sp
                                             Text(
                                                 text = "-${book.currencySymbol}$formattedOut",
@@ -990,6 +990,7 @@ fun BookInsideScreen(
                         BookTransactionRowItem(
                             tx = tx,
                             runningBalance = runningBal,
+                            precision = amountPrecision,
                             onClick = { onEditTransaction(tx) },
                             onDelete = { transactionToDelete = tx }
                         )
@@ -1006,7 +1007,7 @@ fun BookInsideScreen(
             onDismissRequest = { transactionToDelete = null },
             title = { Text("Delete Entry?", fontWeight = FontWeight.Bold) },
             text = {
-                Text("Delete '${tx.memo.ifBlank { tx.category }}' (${if (tx.type == TransactionType.CASH_IN) "+" else "-"}${formatDisplayAmount(tx.amount)})?")
+                Text("Delete '${tx.memo.ifBlank { tx.category }}' (${if (tx.type == TransactionType.CASH_IN) "+" else "-"}${formatDisplayAmount(tx.amount, amountPrecision)})?")
             },
             confirmButton = {
                 Button(
@@ -1036,6 +1037,7 @@ fun BookInsideScreen(
 fun BookTransactionRowItem(
     tx: TransactionRecord,
     runningBalance: Double,
+    precision: Int = 0,
     onClick: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
@@ -1105,7 +1107,7 @@ fun BookTransactionRowItem(
 
                 // Amount (Red for Out, Green for In)
                 Text(
-                    text = "${if (isCashIn) "+" else "-"}${formatDisplayAmount(tx.amount)}",
+                    text = "${if (isCashIn) "+" else "-"}${formatDisplayAmount(tx.amount, precision)}",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = if (isCashIn) Color(0xFF4ADE80) else Color(0xFFF87171)
@@ -1131,7 +1133,7 @@ fun BookTransactionRowItem(
                 Spacer(modifier = Modifier.width(8.dp))
 
                 Text(
-                    text = "Balance: ${formatDisplayAmount(runningBalance)}",
+                    text = "Balance: ${formatDisplayAmount(runningBalance, precision)}",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     color = Color.White.copy(alpha = 0.65f)
@@ -1180,12 +1182,8 @@ fun BookTransactionRowItem(
 }
 
 /**
- * Format numbers with standard comma separators e.g. 10,000 or 33,87,000
+ * Format numbers according to active decimal precision with flooring as per math rules.
  */
-private fun formatDisplayAmount(amount: Double): String {
-    val formatter = NumberFormat.getNumberInstance(Locale.US).apply {
-        maximumFractionDigits = 2
-        minimumFractionDigits = if (amount % 1.0 == 0.0) 0 else 2
-    }
-    return formatter.format(amount)
+private fun formatDisplayAmount(amount: Double, precision: Int = 0): String {
+    return AmountFormatter.format(amount, precision, includeCommas = true)
 }

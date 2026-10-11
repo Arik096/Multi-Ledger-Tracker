@@ -488,8 +488,12 @@ class LedgerViewModel(
 
     fun restoreAllData(books: List<LedgerBook>, transactions: List<TransactionRecord>) {
         viewModelScope.launch {
-            repository.restoreAllData(books, transactions)
-            _snackbarMessage.emit("Restored ${books.size} books, ${transactions.size} entries")
+            val precision = _amountPrecision.value
+            val flooredTransactions = transactions.map {
+                it.copy(amount = AmountFormatter.floorToPrecision(it.amount, precision))
+            }
+            repository.restoreAllData(books, flooredTransactions)
+            _snackbarMessage.emit("Restored ${books.size} books, ${flooredTransactions.size} entries")
             triggerAutoSync()
         }
     }
@@ -504,10 +508,11 @@ class LedgerViewModel(
         paymentMode: String = "Cash"
     ) {
         viewModelScope.launch {
+            val flooredAmount = AmountFormatter.floorToPrecision(amount, _amountPrecision.value)
             val record = TransactionRecord(
                 ledgerBookId = bookId,
                 type = type,
-                amount = amount,
+                amount = flooredAmount,
                 category = category.trim(),
                 timestamp = timestamp,
                 memo = title.trim(),
@@ -515,7 +520,7 @@ class LedgerViewModel(
             )
             val id = repository.insertTransaction(record)
             syncService.onLocalTransactionSaved(record.copy(id = id))
-            _snackbarMessage.emit("Logged ${type.label}: ${String.format("%.2f", amount)}")
+            _snackbarMessage.emit("Logged ${type.label}: ${formatAmount(flooredAmount)}")
             triggerAutoSync()
         }
     }
@@ -604,8 +609,10 @@ class LedgerViewModel(
 
     fun updateTransaction(transaction: TransactionRecord) {
         viewModelScope.launch {
-            repository.updateTransaction(transaction)
-            syncService.onLocalTransactionSaved(transaction)
+            val flooredAmount = AmountFormatter.floorToPrecision(transaction.amount, _amountPrecision.value)
+            val updated = transaction.copy(amount = flooredAmount)
+            repository.updateTransaction(updated)
+            syncService.onLocalTransactionSaved(updated)
             _snackbarMessage.emit("Updated entry")
             triggerAutoSync()
         }
@@ -630,12 +637,14 @@ class LedgerViewModel(
 
     fun commitImportedRows(validRows: List<ParsedImportRow>, targetBookId: Long) {
         viewModelScope.launch {
+            val precision = _amountPrecision.value
             val records = validRows.mapNotNull { row ->
                 if (row.isValid) {
+                    val flooredAmount = AmountFormatter.floorToPrecision(row.amount!!, precision)
                     TransactionRecord(
                         ledgerBookId = targetBookId,
                         type = row.type!!,
-                        amount = row.amount!!,
+                        amount = flooredAmount,
                         category = row.categoryStr,
                         timestamp = row.timestamp!!,
                         memo = row.memoStr,

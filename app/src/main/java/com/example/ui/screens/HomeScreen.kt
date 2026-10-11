@@ -481,7 +481,8 @@ fun HomeScreen(
                 CashOutByTransactionTypeCard(
                     paymentModes = cashOutByPaymentMode,
                     totalExpense = periodTotalExpense,
-                    currencySymbol = currentBook?.currencySymbol ?: "৳"
+                    currencySymbol = currentBook?.currencySymbol ?: "৳",
+                    precision = amountPrecision
                 )
             }
 
@@ -490,7 +491,8 @@ fun HomeScreen(
                 DateWiseCashOutCard(
                     dateSummaries = dateWiseCashOutList,
                     totalExpense = periodTotalExpense,
-                    currencySymbol = currentBook?.currencySymbol ?: "৳"
+                    currencySymbol = currentBook?.currencySymbol ?: "৳",
+                    precision = amountPrecision
                 )
             }
         }
@@ -736,6 +738,7 @@ fun DateWiseCashOutCard(
     dateSummaries: List<DateWiseCashOutSummary>,
     totalExpense: Double,
     currencySymbol: String,
+    precision: Int = 0,
     modifier: Modifier = Modifier
 ) {
     var expandedDateKey by remember { mutableStateOf<String?>(null) }
@@ -788,7 +791,7 @@ fun DateWiseCashOutCard(
                         softWrap = false
                     )
                     Text(
-                        text = "$currencySymbol${String.format(Locale.US, "%,.2f", totalExpense)}",
+                        text = "$currencySymbol ${AmountFormatter.format(totalExpense, precision, includeCommas = true)}",
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.ExtraBold,
                             color = CashOutRed,
@@ -889,7 +892,7 @@ fun DateWiseCashOutCard(
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Column(horizontalAlignment = Alignment.End) {
                                             Text(
-                                                text = "$currencySymbol${String.format(Locale.US, "%,.2f", item.totalCashOut)}",
+                                                text = "$currencySymbol ${AmountFormatter.format(item.totalCashOut, precision, includeCommas = true)}",
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 14.sp,
                                                 color = CashOutRed,
@@ -1002,7 +1005,7 @@ fun DateWiseCashOutCard(
                                                     }
                                                 }
                                                 Text(
-                                                    text = "-$currencySymbol${String.format(Locale.US, "%,.2f", tx.amount)}",
+                                                    text = "-$currencySymbol ${AmountFormatter.format(tx.amount, precision, includeCommas = true)}",
                                                     fontSize = 13.sp,
                                                     fontWeight = FontWeight.Bold,
                                                     color = CashOutRed
