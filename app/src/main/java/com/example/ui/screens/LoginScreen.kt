@@ -2,6 +2,9 @@ package com.example.ui.screens
 
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -15,21 +18,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.CloudDone
-import androidx.compose.material.icons.filled.CloudSync
-import androidx.compose.material.icons.filled.MenuBook
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -43,15 +36,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.R
 import com.example.ui.viewmodel.LedgerViewModel
 
+/**
+ * Simplified, uncluttered Login Screen.
+ * Feature list cards are removed as requested, focusing directly on the Google Sign-In action.
+ */
 @Composable
 fun LoginScreen(
     viewModel: LedgerViewModel,
@@ -68,81 +68,58 @@ fun LoginScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 32.dp),
+                .padding(horizontal = 32.dp, vertical = 48.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.weight(1f))
 
-            // App Brand Logo Container
+            // App Brand Logo with subtle elevation and rounded corners
             Box(
                 modifier = Modifier
-                    .size(80.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .size(104.dp)
+                    .shadow(elevation = 8.dp, shape = RoundedCornerShape(28.dp))
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .border(
-                        1.dp,
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                        RoundedCornerShape(24.dp)
+                        1.5.dp,
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                        RoundedCornerShape(28.dp)
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.MenuBook,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(44.dp)
+                Image(
+                    painter = painterResource(id = R.drawable.app_logo_ledger_1791726433267),
+                    contentDescription = "App Logo",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
                 )
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
             Text(
-                text = "Multi-Ledger",
-                style = MaterialTheme.typography.displayMedium,
+                text = "CashLedger",
+                style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.onBackground,
+                letterSpacing = (-0.5).sp
             )
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Financial Record Keeping with Firestore Sync",
-                style = MaterialTheme.typography.bodyLarge,
+                text = "Sign in with your Google account to restore previous data or start fresh.",
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                lineHeight = 20.sp,
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(48.dp))
 
-            // Feature Highlights (Soft 5-shade Cards)
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                LoginFeatureCard(
-                    icon = Icons.Default.CloudSync,
-                    title = "Google Account Required",
-                    description = "Sign in to securely bind your financial books and sync with Firestore cloud."
-                )
-
-                LoginFeatureCard(
-                    icon = Icons.Default.CloudDone,
-                    title = "Automatic Cloud Vault",
-                    description = "If you have previous data, it restores automatically. Otherwise, you start fresh."
-                )
-
-                LoginFeatureCard(
-                    icon = Icons.Default.Tune,
-                    title = "Precision Point Controls",
-                    description = "Choose 0, 1, or 2 decimal precision points across the entire app with mathematical flooring."
-                )
-            }
-
-            Spacer(modifier = Modifier.height(36.dp))
-
-            // Primary Google Sign-In Action Button
+            // Google Sign-In Primary Button
             Button(
                 onClick = {
                     if (isSigningIn) return@Button
@@ -160,11 +137,12 @@ fun LoginScreen(
                     }
                 },
                 enabled = !isSigningIn,
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(20.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 ),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp, pressedElevation = 6.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
@@ -178,98 +156,52 @@ fun LoginScreen(
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        text = "Connecting to Google...",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                        text = "Signing in...",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
                     )
                 } else {
-                    Icon(
-                        imageVector = Icons.Default.CloudSync,
-                        contentDescription = null,
-                        modifier = Modifier.size(22.dp)
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = "Sign in with Google",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AccountCircle,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Sign in with Google",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+                        )
+                    }
                 }
             }
 
-            AnimatedVisibility(visible = statusText != null) {
+            Spacer(modifier = Modifier.height(16.dp))
+
+            AnimatedVisibility(
+                visible = statusText != null,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
                 Text(
                     text = statusText ?: "",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = 12.dp),
+                    fontWeight = FontWeight.Medium,
                     textAlign = TextAlign.Center
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.weight(1f))
 
             Text(
-                text = "Multi-Ledger secures all data with Firestore end-to-end user rules.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                text = "Secured with Firebase Firestore Cloud Vault",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                 textAlign = TextAlign.Center
             )
-        }
-    }
-}
-
-@Composable
-private fun LoginFeatureCard(
-    icon: ImageVector,
-    title: String,
-    description: String
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(14.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
         }
     }
 }

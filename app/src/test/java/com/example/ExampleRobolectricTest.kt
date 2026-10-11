@@ -16,7 +16,7 @@ class ExampleRobolectricTest {
   fun `read string from context`() {
     val context = ApplicationProvider.getApplicationContext<Context>()
     val appName = context.getString(R.string.app_name)
-    assertEquals("Multi-Ledger", appName)
+    assertEquals("CashLedger", appName)
   }
 
   @Test
@@ -112,12 +112,12 @@ class ExampleRobolectricTest {
       )
     )
 
-    val jsonString = com.example.data.io.GoogleDriveBackupManager.createBackupJson("test@gmail.com", books, transactions)
+    val jsonString = com.example.data.io.JsonBackupHelper.createBackupJson("test@gmail.com", books, transactions)
     org.junit.Assert.assertTrue(jsonString.contains("Trip 2026"))
     org.junit.Assert.assertTrue(jsonString.contains("Resort stay"))
     org.junit.Assert.assertTrue(jsonString.contains("Travel allowance"))
 
-    val parsed = com.example.data.io.GoogleDriveBackupManager.parseBackupJson(jsonString)
+    val parsed = com.example.data.io.JsonBackupHelper.parseBackupJson(jsonString)
     org.junit.Assert.assertTrue(parsed.success)
     assertEquals(1, parsed.books.size)
     assertEquals("Trip 2026", parsed.books[0].name)

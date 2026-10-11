@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Multi-Ledger"
+rootProject.name = "CashLedger"
 
 include(":app")

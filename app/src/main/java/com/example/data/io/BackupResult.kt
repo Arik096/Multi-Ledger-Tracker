@@ -44,6 +44,7 @@ object JsonBackupHelper {
             bObj.put("colorHex", b.colorHex)
             bObj.put("iconName", b.iconName)
             bObj.put("isArchived", b.isArchived)
+            bObj.put("customCategories", b.customCategories)
             bObj.put("customExpenseCategories", b.customExpenseCategories)
             bObj.put("customIncomeCategories", b.customIncomeCategories)
             booksArr.put(bObj)
@@ -90,6 +91,7 @@ object JsonBackupHelper {
                         colorHex = bObj.optLong("colorHex", 0xFF0D9488L),
                         iconName = bObj.optString("iconName", "wallet"),
                         isArchived = bObj.optBoolean("isArchived", false),
+                        customCategories = bObj.optString("customCategories", ""),
                         customExpenseCategories = bObj.optString("customExpenseCategories", ""),
                         customIncomeCategories = bObj.optString("customIncomeCategories", "")
                     )

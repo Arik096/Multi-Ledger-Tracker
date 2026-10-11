@@ -1,5 +1,5 @@
 {
-  "name": "Multi-Ledger",
+  "name": "CashLedger",
   "description": "Multi-ledger financial tracking dashboard with expense breakdown by category, date and book filtering, and direct PDF and CSV book import.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

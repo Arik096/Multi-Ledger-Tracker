@@ -167,7 +167,7 @@ fun AnimatedSplashScreen(
                 modifier = Modifier.alpha(textAlpha.value)
             ) {
                 Text(
-                    text = "CashBook",
+                    text = "CashLedger",
                     style = MaterialTheme.typography.headlineMedium.copy(
                         fontWeight = FontWeight.ExtraBold,
                         letterSpacing = 1.sp
@@ -178,7 +178,7 @@ fun AnimatedSplashScreen(
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
-                    text = "Multi-Ledger • BDT (৳)",
+                    text = "Smart Financial Books • Cloud Sync",
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontWeight = FontWeight.Medium,
                         letterSpacing = 0.5.sp
