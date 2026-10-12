@@ -76,6 +76,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.data.io.ImportValidationSummary
 import com.example.data.model.CategoryConstants
+import com.example.util.AmountFormatter
 import com.example.data.model.DateRangeFilter
 import com.example.data.model.FilterCriteria
 import com.example.data.model.LedgerBook
@@ -234,7 +235,7 @@ fun AddEditTransactionDialog(
 ) {
     val context = LocalContext.current
     var selectedType by remember { mutableStateOf(initialTransaction?.type ?: TransactionType.CASH_OUT) }
-    var amountStr by remember { mutableStateOf(if (initialTransaction != null) String.format(Locale.US, "%.2f", initialTransaction.amount) else "") }
+    var amountStr by remember { mutableStateOf(if (initialTransaction != null) AmountFormatter.format(initialTransaction.amount) else "") }
     var selectedCategory by remember { mutableStateOf(initialTransaction?.category ?: if (selectedType == TransactionType.CASH_IN) "Salary" else "Food & Dining") }
     var customCategoryInput by remember { mutableStateOf("") }
     var showCustomCategoryField by remember { mutableStateOf(false) }
@@ -536,7 +537,7 @@ fun TransactionDetailSheet(
             onDismissRequest = { showDeleteConfirmation = false },
             title = { Text("Delete Entry?") },
             text = {
-                Text("Delete this ${transaction.category} entry for ${currencySymbol}${String.format(Locale.US, "%.2f", transaction.amount)}?")
+                Text("Delete this ${transaction.category} entry for ${currencySymbol}${AmountFormatter.format(transaction.amount, includeCommas = true)}?")
             },
             confirmButton = {
                 Button(

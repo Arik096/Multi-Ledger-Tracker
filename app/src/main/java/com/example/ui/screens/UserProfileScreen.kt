@@ -122,44 +122,13 @@ fun UserProfileScreen(
     val userName by viewModel.userName.collectAsStateWithLifecycle()
     val profilePhotoPath by viewModel.profilePhotoPath.collectAsStateWithLifecycle()
     val defaultCurrency by viewModel.defaultCurrency.collectAsStateWithLifecycle()
-    val amountPrecision by viewModel.amountPrecision.collectAsStateWithLifecycle()
-    val dynamicColor by viewModel.dynamicColor.collectAsStateWithLifecycle()
 
     // Dialog states
     var showDisconnectConfirmDialog by remember { mutableStateOf(false) }
     var showCurrencyDialog by remember { mutableStateOf(false) }
-    var showBackupFileContentDialog by remember { mutableStateOf(false) }
-    var backupFileContentText by remember { mutableStateOf("") }
 
     var statusMessage by remember { mutableStateOf<String?>(null) }
     var isSuccessStatus by remember { mutableStateOf(true) }
-
-    // JSON file restore safeguard states
-    var pendingRestoreResult by remember { mutableStateOf<BackupResult?>(null) }
-    var showFirstRestoreConfirmDialog by remember { mutableStateOf(false) }
-    var showSecondRestoreConfirmDialog by remember { mutableStateOf(false) }
-
-    val jsonFilePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        if (uri != null) {
-            scope.launch {
-                try {
-                    val result = CloudStorageManager.parseBackupFromUri(context, uri)
-                    if (result.success && result.books.isNotEmpty()) {
-                        pendingRestoreResult = result
-                        showFirstRestoreConfirmDialog = true
-                    } else {
-                        statusMessage = "Could not load backup from file: ${result.message.ifBlank { "Invalid or empty backup file" }}"
-                        isSuccessStatus = false
-                    }
-                } catch (e: Exception) {
-                    statusMessage = "Failed to open backup file: ${e.localizedMessage}"
-                    isSuccessStatus = false
-                }
-            }
-        }
-    }
 
     Scaffold(
         topBar = {
@@ -250,71 +219,11 @@ fun UserProfileScreen(
                 )
             }
 
-            // 4. Amount Precision Setting Card (0, 1, 2 decimals, active app-wide, floored as per math rules)
-            item {
-                AmountPrecisionSettingCard(
-                    currentPrecision = amountPrecision,
-                    onPrecisionSelected = { point ->
-                        viewModel.setAmountPrecision(point)
-                        Toast.makeText(context, "Amount precision set to $point decimal places", Toast.LENGTH_SHORT).show()
-                    }
-                )
-            }
-
-            // 5. Local Backup File & Download Card (Direct JSON export/import without Google Drive)
-            val activeBackupEmail = if (driveAccountEmail.isNotBlank()) driveAccountEmail else "cashbook_user"
-            item {
-                BackupFileLocationCard(
-                    email = activeBackupEmail,
-                    onDownloadShare = {
-                        val uri = CloudStorageManager.getShareableBackupUri(context, activeBackupEmail)
-                        if (uri != null) {
-                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                type = "application/json"
-                                putExtra(Intent.EXTRA_STREAM, uri)
-                                putExtra(Intent.EXTRA_SUBJECT, "CashBook Backup - $activeBackupEmail")
-                                putExtra(Intent.EXTRA_TEXT, "Here is my CashBook records backup.")
-                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            }
-                            context.startActivity(Intent.createChooser(shareIntent, "Share Backup JSON"))
-                        } else {
-                            Toast.makeText(context, "No backup file found. Tap 'Sync Now' first.", Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    onCopyPath = { path ->
-                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-                        clipboard?.setPrimaryClip(ClipData.newPlainText("Backup Path", path))
-                        Toast.makeText(context, "Backup path copied to clipboard", Toast.LENGTH_SHORT).show()
-                    },
-                    onViewContent = {
-                        val file = CloudStorageManager.getShareableBackupFile(context, activeBackupEmail)
-                        if (file != null && file.exists()) {
-                            backupFileContentText = file.readText()
-                            showBackupFileContentDialog = true
-                        } else {
-                            Toast.makeText(context, "Backup file not generated yet. Tap 'Sync Now' first.", Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    onUploadRestoreJson = {
-                        try {
-                            jsonFilePickerLauncher.launch(arrayOf("application/json", "text/*", "*/*"))
-                        } catch (e: Exception) {
-                            Toast.makeText(context, "Error opening file picker: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                )
-            }
-
-            // 6. Theme & Color Scheme Card (Soft 5-shade schemes + Material You dynamic colors)
+            // 4. Theme & Color Scheme Card (Soft 5-shade schemes)
             item {
                 ThemeSwitcherCard(
                     currentThemeMode = currentThemeMode,
                     currentModernPalette = currentModernPalette,
-                    dynamicColor = dynamicColor,
-                    onDynamicColorToggle = { enabled ->
-                        viewModel.setDynamicColor(enabled)
-                        Toast.makeText(context, if (enabled) "Material You dynamic colors enabled" else "Custom soft palette enabled", Toast.LENGTH_SHORT).show()
-                    },
                     onThemeSelected = { mode ->
                         viewModel.setThemeMode(mode)
                         val modeName = when (mode) {
@@ -476,146 +385,6 @@ fun UserProfileScreen(
             confirmButton = {
                 TextButton(onClick = { showCurrencyDialog = false }) {
                     Text("Close")
-                }
-            }
-        )
-    }
-
-    // Dialog: Backup JSON Content Preview
-    if (showBackupFileContentDialog) {
-        AlertDialog(
-            onDismissRequest = { showBackupFileContentDialog = false },
-            title = {
-                Text(text = "Backup File Preview", fontWeight = FontWeight.Bold)
-            },
-            text = {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(320.dp)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    Text(
-                        text = backupFileContentText,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, backupFileContentText)
-                        }
-                        context.startActivity(Intent.createChooser(shareIntent, "Share JSON Content"))
-                    }
-                ) {
-                    Text("Share Content")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showBackupFileContentDialog = false }) {
-                    Text("Close")
-                }
-            }
-        )
-    }
-
-    // Dialog: Restore Step 1 - Confirmation
-    if (showFirstRestoreConfirmDialog && pendingRestoreResult != null) {
-        val result = pendingRestoreResult!!
-        AlertDialog(
-            onDismissRequest = {
-                showFirstRestoreConfirmDialog = false
-                pendingRestoreResult = null
-            },
-            icon = {
-                Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
-            },
-            title = {
-                Text(text = "Restore Backup Data?", fontWeight = FontWeight.Bold)
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "Found ${result.books.size} books and ${result.transactions.size} transactions in this backup file.",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        text = "Restoring will import these books and entries into your database.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showFirstRestoreConfirmDialog = false
-                        showSecondRestoreConfirmDialog = true
-                    },
-                    modifier = Modifier.testTag("btn_confirm_restore_step1")
-                ) {
-                    Text("Proceed")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        showFirstRestoreConfirmDialog = false
-                        pendingRestoreResult = null
-                    }
-                ) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
-
-    // Dialog: Restore Step 2 - Final Confirmation
-    if (showSecondRestoreConfirmDialog && pendingRestoreResult != null) {
-        val result = pendingRestoreResult!!
-        AlertDialog(
-            onDismissRequest = {
-                showSecondRestoreConfirmDialog = false
-                pendingRestoreResult = null
-            },
-            title = {
-                Text(text = "Confirm Data Import", fontWeight = FontWeight.Bold)
-            },
-            text = {
-                Text(
-                    text = "Are you sure you want to write ${result.books.size} books and ${result.transactions.size} records? This operation will merge the backup with existing data.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showSecondRestoreConfirmDialog = false
-                        scope.launch {
-                            viewModel.restoreFromBackupResult(result)
-                            statusMessage = "Successfully imported ${result.books.size} books and ${result.transactions.size} transactions."
-                            isSuccessStatus = true
-                            pendingRestoreResult = null
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    modifier = Modifier.testTag("btn_confirm_restore_final")
-                ) {
-                    Text("Confirm Import")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        showSecondRestoreConfirmDialog = false
-                        pendingRestoreResult = null
-                    }
-                ) {
-                    Text("Cancel")
                 }
             }
         )
@@ -928,334 +697,12 @@ private fun FirestoreCloudSyncCard(
 }
 
 // -------------------------------------------------------------
-// Component 3: Amount Precision Setting Card
-// -------------------------------------------------------------
-@Composable
-private fun AmountPrecisionSettingCard(
-    currentPrecision: Int,
-    onPrecisionSelected: (Int) -> Unit
-) {
-    Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag("amount_precision_setting_card")
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(18.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Tune,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = "Amount Precision Points",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "App-wide decimal display & math floor rule",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            Text(
-                text = "Choose how many precision decimal places to show across all amounts:",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Precision Segmented Options: 0, 1, 2
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                PrecisionOptionButton(
-                    precision = 0,
-                    label = "0 Decimals",
-                    example = "1,100",
-                    isSelected = currentPrecision == 0,
-                    onClick = { onPrecisionSelected(0) },
-                    modifier = Modifier.weight(1f)
-                )
-
-                PrecisionOptionButton(
-                    precision = 1,
-                    label = "1 Decimal",
-                    example = "1,100.2",
-                    isSelected = currentPrecision == 1,
-                    onClick = { onPrecisionSelected(1) },
-                    modifier = Modifier.weight(1f)
-                )
-
-                PrecisionOptionButton(
-                    precision = 2,
-                    label = "2 Decimals",
-                    example = "1,203.12",
-                    isSelected = currentPrecision == 2,
-                    onClick = { onPrecisionSelected(2) },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Live Preview & Math Rules Info
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Info,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column {
-                        val sampleRaw = 1100.85
-                        val sampleFloored = AmountFormatter.format(sampleRaw, currentPrecision, includeCommas = true)
-                        Text(
-                            text = "Live Sample: 1100.85 ➔ $sampleFloored",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = "Any entered or synced amounts with extra decimals are automatically floored per math rules.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PrecisionOptionButton(
-    precision: Int,
-    label: String,
-    example: String,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-        border = BorderStroke(
-            1.dp,
-            if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-        ),
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .clickable { onClick() }
-            .testTag("precision_button_$precision")
-    ) {
-        Column(
-            modifier = Modifier.padding(vertical = 12.dp, horizontal = 6.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = label,
-                fontSize = 12.sp,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = example,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = if (isSelected) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f) else MaterialTheme.colorScheme.primary
-            )
-        }
-    }
-}
-
-// -------------------------------------------------------------
-// Component 4: Local Backup & JSON Safeguard Card
-// -------------------------------------------------------------
-@Composable
-private fun BackupFileLocationCard(
-    email: String,
-    onDownloadShare: () -> Unit,
-    onCopyPath: (String) -> Unit,
-    onViewContent: () -> Unit,
-    onUploadRestoreJson: () -> Unit
-) {
-    val relativePath = CloudStorageManager.getPublicStoragePath(email)
-    val fullPath = "/storage/emulated/0/$relativePath"
-
-    Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag("backup_file_location_card")
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(18.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Folder,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = "Local JSON Backup & Restore",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Offline JSON safeguard • Export or import backups",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Storage Path",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
-                        )
-                        IconButton(
-                            onClick = { onCopyPath(fullPath) },
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ContentCopy,
-                                contentDescription = "Copy Path",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                    Text(
-                        text = fullPath,
-                        fontSize = 11.sp,
-                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onDownloadShare,
-                    modifier = Modifier.weight(1f).testTag("btn_share_json"),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Share")
-                }
-
-                OutlinedButton(
-                    onClick = onViewContent,
-                    modifier = Modifier.weight(1f).testTag("btn_view_json"),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("View")
-                }
-
-                Button(
-                    onClick = onUploadRestoreJson,
-                    modifier = Modifier.weight(1f).testTag("btn_restore_json"),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Restore")
-                }
-            }
-        }
-    }
-}
-
-// -------------------------------------------------------------
-// Component 5: Theme Switcher Card (Soft 5-shade & Material You)
+// Component 3: Theme Switcher Card (Soft 5-shade palettes)
 // -------------------------------------------------------------
 @Composable
 private fun ThemeSwitcherCard(
     currentThemeMode: ThemeMode,
     currentModernPalette: ModernPalette,
-    dynamicColor: Boolean,
-    onDynamicColorToggle: (Boolean) -> Unit,
     onThemeSelected: (ThemeMode) -> Unit,
     onPaletteSelected: (ModernPalette) -> Unit
 ) {
@@ -1307,45 +754,7 @@ private fun ThemeSwitcherCard(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // 1. Material You Dynamic Color Toggle
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Material You Dynamic Colors",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Harmonize with your wallpaper (Android 12+)",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Switch(
-                        checked = dynamicColor,
-                        onCheckedChange = onDynamicColorToggle,
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = MaterialTheme.colorScheme.primary,
-                            checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
-                        )
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // 2. Segmented Theme Mode Options (Dark / Light / System)
+            // 1. Segmented Theme Mode Options (Dark / Light / System)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -1379,7 +788,7 @@ private fun ThemeSwitcherCard(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
             Spacer(modifier = Modifier.height(14.dp))
 
-            // 3. Modern Soft Color Schemes (5 distinct options)
+            // 2. Modern Soft Color Schemes (5 distinct options)
             Text(
                 text = "Soft Color Schemes (5 shades with card distinction)",
                 style = MaterialTheme.typography.titleSmall,
@@ -1398,7 +807,7 @@ private fun ThemeSwitcherCard(
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 palettes.forEach { pal ->
-                    val isSelected = currentModernPalette == pal && !dynamicColor
+                    val isSelected = currentModernPalette == pal
                     val accentColor = when (pal) {
                         ModernPalette.EMERALD_MINT -> Color(0xFF10B981)
                         ModernPalette.CYBER_INDIGO -> Color(0xFF6366F1)

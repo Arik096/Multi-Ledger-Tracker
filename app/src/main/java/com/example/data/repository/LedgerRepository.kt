@@ -35,6 +35,10 @@ class LedgerRepository(
 
     suspend fun getBookByIdDirect(id: Long): LedgerBook? = ledgerBookDao.getBookByIdDirect(id)
 
+    suspend fun insertBook(book: LedgerBook): Long = ledgerBookDao.insertBook(book)
+
+    suspend fun insertBooks(books: List<LedgerBook>): List<Long> = ledgerBookDao.insertBooks(books)
+
     suspend fun createBook(
         name: String,
         currencySymbol: String = "৳",

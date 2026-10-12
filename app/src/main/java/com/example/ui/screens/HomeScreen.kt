@@ -117,9 +117,10 @@ fun HomeScreen(
     viewModel: LedgerViewModel,
     onNavigateToBooks: () -> Unit,
     onEditTransaction: (TransactionRecord) -> Unit,
-    onOpenDriveBackup: () -> Unit,
+    onOpenDriveBackup: () -> Unit = {},
     onNavigateBack: (() -> Unit)? = null,
     onBookSwitched: ((LedgerBook) -> Unit)? = null,
+    onAddTransaction: ((TransactionType) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -135,7 +136,6 @@ fun HomeScreen(
     val periodTotalIncome by viewModel.periodTotalIncome.collectAsStateWithLifecycle()
     val periodTotalExpense by viewModel.periodTotalExpense.collectAsStateWithLifecycle()
     val periodNetSavings by viewModel.periodNetSavings.collectAsStateWithLifecycle()
-    val amountPrecision by viewModel.amountPrecision.collectAsStateWithLifecycle()
 
     var showBookSwitchSheet by remember { mutableStateOf(false) }
     var showAdvancedFilterDialog by remember { mutableStateOf(false) }
@@ -457,7 +457,6 @@ fun HomeScreen(
                     totalIncome = periodTotalIncome,
                     totalExpense = periodTotalExpense,
                     onSwitchBookClick = { showBookSwitchSheet = true },
-                    precision = amountPrecision,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -471,8 +470,7 @@ fun HomeScreen(
                     currencySymbol = currentBook?.currencySymbol ?: "৳",
                     onCategoryClick = { categoryName ->
                         viewModel.setCategoryFilter(categoryName)
-                    },
-                    precision = amountPrecision
+                    }
                 )
             }
 
@@ -481,8 +479,7 @@ fun HomeScreen(
                 CashOutByTransactionTypeCard(
                     paymentModes = cashOutByPaymentMode,
                     totalExpense = periodTotalExpense,
-                    currencySymbol = currentBook?.currencySymbol ?: "৳",
-                    precision = amountPrecision
+                    currencySymbol = currentBook?.currencySymbol ?: "৳"
                 )
             }
 
@@ -491,10 +488,23 @@ fun HomeScreen(
                 DateWiseCashOutCard(
                     dateSummaries = dateWiseCashOutList,
                     totalExpense = periodTotalExpense,
-                    currencySymbol = currentBook?.currencySymbol ?: "৳",
-                    precision = amountPrecision
+                    currencySymbol = currentBook?.currencySymbol ?: "৳"
                 )
             }
+        }
+
+        if (onAddTransaction != null && !isCurrentBookArchived) {
+            ExtendedFloatingActionButton(
+                onClick = { onAddTransaction(TransactionType.CASH_OUT) },
+                icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                text = { Text("Add Entry", fontWeight = FontWeight.Bold) },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp)
+                    .testTag("fab_home_add_entry")
+            )
         }
     }
 

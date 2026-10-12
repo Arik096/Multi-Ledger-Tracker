@@ -3,6 +3,7 @@ package com.example.data.io
 import android.util.Xml
 import com.example.data.model.TransactionRecord
 import com.example.data.model.TransactionType
+import com.example.util.AmountFormatter
 import org.xmlpull.v1.XmlPullParser
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -41,7 +42,7 @@ object ExcelExporterImporter {
         transactions.forEach { tx ->
             val dateStr = exportDateFormat.format(Date(tx.timestamp))
             val typeStr = if (tx.type == TransactionType.CASH_IN) "Income" else "Expense"
-            val amountStr = String.format(Locale.US, "%.2f", tx.amount)
+            val amountStr = AmountFormatter.format(tx.amount)
             rows.add(listOf(dateStr, typeStr, amountStr, tx.category, tx.memo))
         }
         return buildXlsxBytes(rows)

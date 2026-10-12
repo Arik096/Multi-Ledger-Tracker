@@ -66,7 +66,7 @@ import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.ui.text.style.TextAlign
-import com.example.ui.components.AnimatedSplashScreen
+import com.example.ui.components.ImportBookCsvDialog
 import com.example.ui.screens.BookInsideScreen
 import com.example.ui.screens.BookSettingsScreen
 import com.example.ui.screens.CashPositionScreen
@@ -87,11 +87,13 @@ enum class MainTab(val title: String) {
 }
 
 class MainActivity : ComponentActivity() {
+
     private var ledgerViewModel: LedgerViewModel? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
         val app = applicationContext as Application
         val vm: LedgerViewModel = ViewModelProvider(this, LedgerViewModel.provideFactory(app))[LedgerViewModel::class.java]
         ledgerViewModel = vm
@@ -99,7 +101,6 @@ class MainActivity : ComponentActivity() {
         setContent {
             val themeMode by vm.themeMode.collectAsStateWithLifecycle()
             val modernPalette by vm.modernPalette.collectAsStateWithLifecycle()
-            val dynamicColor by vm.dynamicColor.collectAsStateWithLifecycle()
             val isDarkTheme = when (themeMode) {
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
@@ -108,8 +109,7 @@ class MainActivity : ComponentActivity() {
 
             MyApplicationTheme(
                 darkTheme = isDarkTheme,
-                palette = modernPalette,
-                dynamicColor = dynamicColor
+                palette = modernPalette
             ) {
                 MainAppScreen(viewModel = vm)
             }
@@ -142,22 +142,14 @@ fun MainAppScreen(
     var editingTransaction by remember { mutableStateOf<TransactionRecord?>(null) }
     var bookForSettings by remember { mutableStateOf<LedgerBook?>(null) }
     var showExitConfirmDialog by remember { mutableStateOf(false) }
-    var showSplash by remember { mutableStateOf(true) }
+    var bookForImportCsv by remember { mutableStateOf<LedgerBook?>(null) }
+    var showCsvImportDialog by remember { mutableStateOf(false) }
 
     // Keep activeBookInside synced with latest state from allBooks
     val currentActiveBook = remember(activeBookInside, allBooks) {
         if (activeBookInside != null) {
             allBooks.firstOrNull { it.id == activeBookInside!!.id } ?: activeBookInside
         } else null
-    }
-
-    if (showSplash) {
-        AnimatedSplashScreen(
-            onAnimationFinished = {
-                showSplash = false
-            }
-        )
-        return
     }
 
     if (!isAccountConnected && driveAccountEmail.isBlank()) {
@@ -256,6 +248,10 @@ fun MainAppScreen(
                 activeBookInside = null
             },
             onEditTransaction = { tx -> editingTransaction = tx },
+            onAddTransaction = { type ->
+                logEntryInitialType = type
+                isLoggingEntry = true
+            },
             onOpenDriveBackup = {
                 isViewingDashboardForBook = null
                 currentTab = MainTab.PROFILE
@@ -285,9 +281,9 @@ fun MainAppScreen(
             },
             onEditTransaction = { tx -> editingTransaction = tx },
             onOpenBookSettings = { bookForSettings = currentActiveBook },
-            onOpenDriveBackup = {
-                activeBookInside = null
-                currentTab = MainTab.PROFILE
+            onOpenImportCsv = {
+                bookForImportCsv = currentActiveBook
+                showCsvImportDialog = true
             }
         )
     } else {
@@ -401,6 +397,10 @@ fun MainAppScreen(
                         viewModel = viewModel,
                         onNavigateToBooks = { currentTab = MainTab.BOOKS },
                         onEditTransaction = { tx -> editingTransaction = tx },
+                        onAddTransaction = { type ->
+                            logEntryInitialType = type
+                            isLoggingEntry = true
+                        },
                         onOpenDriveBackup = { currentTab = MainTab.PROFILE },
                         onNavigateBack = null,
                         modifier = Modifier.padding(innerPadding)
@@ -421,6 +421,27 @@ fun MainAppScreen(
                 }
             }
         }
+    }
+
+    // CSV Import Dialog from BookInsideScreen or elsewhere
+    if (showCsvImportDialog) {
+        ImportBookCsvDialog(
+            targetBook = bookForImportCsv,
+            onDismiss = {
+                showCsvImportDialog = false
+                bookForImportCsv = null
+            },
+            onImportSuccess = { bookId ->
+                showCsvImportDialog = false
+                bookForImportCsv = null
+                viewModel.selectBook(bookId)
+                val importedBook = allBooks.firstOrNull { it.id == bookId }
+                if (importedBook != null) {
+                    activeBookInside = importedBook
+                }
+            },
+            viewModel = viewModel
+        )
     }
 
     // Exit App Confirmation Dialog (User requirement: confirmation popup needed before exiting: "when exiting the app, a pop-up will show do you want to exit, after confirmation, it will exit the app")

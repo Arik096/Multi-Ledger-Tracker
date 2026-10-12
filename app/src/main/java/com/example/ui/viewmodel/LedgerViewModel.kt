@@ -410,19 +410,24 @@ class LedgerViewModel(
 
             val records = validRows.mapNotNull { row ->
                 if (row.isValid) {
+                    val flooredAmount = AmountFormatter.floorToPrecision(row.amount!!, 0)
                     TransactionRecord(
                         ledgerBookId = bookId,
                         type = row.type!!,
-                        amount = row.amount!!,
-                        category = row.categoryStr,
+                        amount = flooredAmount,
+                        category = row.categoryStr.ifBlank { "General" },
                         timestamp = row.timestamp!!,
-                        memo = row.memoStr,
+                        memo = row.memoStr.ifBlank { row.categoryStr.ifBlank { "Entry" } },
                         paymentMode = row.paymentMode.ifBlank { "Cash" }
                     )
                 } else null
             }
             if (records.isNotEmpty()) {
-                repository.insertTransactions(records)
+                val insertedIds = repository.insertTransactions(records)
+                records.forEachIndexed { index, rec ->
+                    val withId = if (index < insertedIds.size) rec.copy(id = insertedIds[index]) else rec
+                    syncService.onLocalTransactionSaved(withId)
+                }
             }
             _selectedBookId.value = bookId
             val created = repository.getBookByIdDirect(bookId)
@@ -508,14 +513,29 @@ class LedgerViewModel(
         paymentMode: String = "Cash"
     ) {
         viewModelScope.launch {
-            val flooredAmount = AmountFormatter.floorToPrecision(amount, _amountPrecision.value)
+            var targetId = bookId
+            if (targetId <= 0L) {
+                val existing = allBooks.value.firstOrNull { !it.isArchived } ?: allBooks.value.firstOrNull()
+                if (existing != null) {
+                    targetId = existing.id
+                } else {
+                    val defaultBook = LedgerBook(
+                        name = "Daily Cash",
+                        colorHex = 0xFF10B981L,
+                        currencySymbol = _defaultCurrency.value
+                    )
+                    targetId = repository.insertBook(defaultBook)
+                    syncService.onLocalBookSaved(defaultBook.copy(id = targetId))
+                }
+            }
+            val flooredAmount = AmountFormatter.floorToPrecision(amount, 0)
             val record = TransactionRecord(
-                ledgerBookId = bookId,
+                ledgerBookId = targetId,
                 type = type,
                 amount = flooredAmount,
-                category = category.trim(),
+                category = category.trim().ifBlank { "General" },
                 timestamp = timestamp,
-                memo = title.trim(),
+                memo = title.trim().ifBlank { category.trim().ifBlank { "Entry" } },
                 paymentMode = paymentMode
             )
             val id = repository.insertTransaction(record)
@@ -532,9 +552,9 @@ class LedgerViewModel(
         timestamp: Long,
         memo: String
     ) {
-        val book = currentBook.value ?: allBooks.value.firstOrNull() ?: return
+        val targetId = currentBook.value?.id ?: allBooks.value.firstOrNull()?.id ?: 0L
         addTransaction(
-            bookId = book.id,
+            bookId = targetId,
             type = type,
             amount = amount,
             category = category,
@@ -637,23 +657,26 @@ class LedgerViewModel(
 
     fun commitImportedRows(validRows: List<ParsedImportRow>, targetBookId: Long) {
         viewModelScope.launch {
-            val precision = _amountPrecision.value
             val records = validRows.mapNotNull { row ->
                 if (row.isValid) {
-                    val flooredAmount = AmountFormatter.floorToPrecision(row.amount!!, precision)
+                    val flooredAmount = AmountFormatter.floorToPrecision(row.amount!!, 0)
                     TransactionRecord(
                         ledgerBookId = targetBookId,
                         type = row.type!!,
                         amount = flooredAmount,
-                        category = row.categoryStr,
+                        category = row.categoryStr.ifBlank { "General" },
                         timestamp = row.timestamp!!,
-                        memo = row.memoStr,
+                        memo = row.memoStr.ifBlank { row.categoryStr.ifBlank { "Entry" } },
                         paymentMode = row.paymentMode.ifBlank { "Cash" }
                     )
                 } else null
             }
             if (records.isNotEmpty()) {
-                repository.insertTransactions(records)
+                val insertedIds = repository.insertTransactions(records)
+                records.forEachIndexed { index, rec ->
+                    val withId = if (index < insertedIds.size) rec.copy(id = insertedIds[index]) else rec
+                    syncService.onLocalTransactionSaved(withId)
+                }
                 _snackbarMessage.emit("Successfully imported ${records.size} transactions!")
                 triggerAutoSync()
             }

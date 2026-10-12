@@ -96,23 +96,51 @@ class FirestoreSyncService(
         val localBooks = ledgerRepository.getActiveBooksDirect()
         val localTransactions = ledgerRepository.getAllTransactionsDirect()
 
-        if (remoteBooks.isEmpty() && remoteTransactions.isEmpty()) {
-            // First time or cloud is empty: push local data to Firestore
-            if (localBooks.isNotEmpty() || localTransactions.isNotEmpty()) {
-                val fBooks = localBooks.map { FirestoreLedgerBook.fromLocal(it, userId) }
-                val fTxs = localTransactions.map { FirestoreTransactionRecord.fromLocal(it, userId) }
-                firestoreRepository.syncAllLocalToCloud(userId, fBooks, fTxs)
+        // 3. Push any local books/transactions to Firestore if missing on remote
+        val remoteBookIds = remoteBooks.map { it.id }.toSet()
+        val remoteTxIds = remoteTransactions.map { it.id }.toSet()
+
+        for (localBook in localBooks) {
+            if (!remoteBookIds.contains(localBook.id.toString())) {
+                try {
+                    firestoreRepository.saveBook(userId, FirestoreLedgerBook.fromLocal(localBook, userId))
+                } catch (e: Exception) {
+                    Log.e("FirestoreSyncService", "Error syncing local book ${localBook.id}", e)
+                }
             }
-        } else {
-            // Remote has data: merge or restore remote records locally
-            isApplyingRemoteUpdates = true
-            try {
-                val mergedBooks = remoteBooks.map { it.toLocalLedgerBook() }
-                val mergedTxs = remoteTransactions.map { it.toLocalTransactionRecord() }
-                ledgerRepository.restoreAllData(mergedBooks, mergedTxs)
-            } finally {
-                isApplyingRemoteUpdates = false
+        }
+
+        for (localTx in localTransactions) {
+            if (!remoteTxIds.contains(localTx.id.toString())) {
+                try {
+                    firestoreRepository.saveTransaction(userId, FirestoreTransactionRecord.fromLocal(localTx, userId))
+                } catch (e: Exception) {
+                    Log.e("FirestoreSyncService", "Error syncing local tx ${localTx.id}", e)
+                }
             }
+        }
+
+        // 4. Merge any remote books/transactions that are not yet local
+        isApplyingRemoteUpdates = true
+        try {
+            val localBookIds = localBooks.map { it.id }.toSet()
+            val localTxIds = localTransactions.map { it.id }.toSet()
+
+            for (rBook in remoteBooks) {
+                val localB = rBook.toLocalLedgerBook()
+                if (!localBookIds.contains(localB.id)) {
+                    ledgerRepository.insertBook(localB)
+                }
+            }
+
+            for (rTx in remoteTransactions) {
+                val localT = rTx.toLocalTransactionRecord()
+                if (!localTxIds.contains(localT.id)) {
+                    ledgerRepository.insertTransaction(localT)
+                }
+            }
+        } finally {
+            isApplyingRemoteUpdates = false
         }
 
         _syncStatus.value = SyncStatus.Synced(System.currentTimeMillis())

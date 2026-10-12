@@ -282,16 +282,16 @@ fun LogEntryScreen(
             OutlinedTextField(
                 value = amountStr,
                 onValueChange = {
-                    amountStr = it
+                    amountStr = it.filter { ch -> ch.isDigit() }
                     if (amountError) amountError = false
                 },
                 label = { Text("Amount (${currentBook?.currencySymbol ?: "৳"}) *") },
-                placeholder = { Text("0.00") },
+                placeholder = { Text("1000") },
                 isError = amountError,
                 supportingText = if (amountError) {
-                    { Text("Please enter a valid amount greater than 0", color = MaterialTheme.colorScheme.error) }
+                    { Text("Please enter a valid amount", color = MaterialTheme.colorScheme.error) }
                 } else null,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
                 shape = RoundedCornerShape(14.dp),
                 modifier = Modifier
@@ -299,19 +299,16 @@ fun LogEntryScreen(
                     .testTag("log_entry_amount_input")
             )
 
-            // 2. Title Input Field
+            // 2. Title Input Field (Optional)
             OutlinedTextField(
                 value = title,
                 onValueChange = {
                     title = it
                     if (titleError) titleError = false
                 },
-                label = { Text("Title / Memo *") },
+                label = { Text("Title / Memo (Optional)") },
                 placeholder = { Text("e.g. Salary, Groceries, Client payment...") },
                 isError = titleError,
-                supportingText = if (titleError) {
-                    { Text("Title is required", color = MaterialTheme.colorScheme.error) }
-                } else null,
                 singleLine = true,
                 shape = RoundedCornerShape(14.dp),
                 modifier = Modifier
@@ -714,12 +711,7 @@ fun LogEntryScreen(
                 onClick = {
                     var hasError = false
 
-                    if (title.isBlank()) {
-                        titleError = true
-                        hasError = true
-                    }
-
-                    val parsedAmount = amountStr.toDoubleOrNull()
+                    val parsedAmount = amountStr.trim().toDoubleOrNull()
                     if (parsedAmount == null || parsedAmount <= 0.0) {
                         amountError = true
                         hasError = true
@@ -738,15 +730,17 @@ fun LogEntryScreen(
 
                     val finalCategory = if (!isCategoryEnabled) "General" else (if (selectedCategory.isBlank()) "General" else selectedCategory)
                     val finalPaymentMode = if (!isTransactionTypeEnabled) "Cash" else selectedPaymentMode
+                    val finalTitle = title.trim().ifBlank { finalCategory }
+                    val flooredAmount = kotlin.math.floor(parsedAmount!!).toLong().toDouble()
 
                     if (initialTransaction == null) {
                         viewModel.addTransaction(
                             bookId = targetBookId,
                             type = selectedType,
-                            amount = parsedAmount!!,
+                            amount = flooredAmount,
                             category = finalCategory,
                             timestamp = timestamp,
-                            title = title.trim(),
+                            title = finalTitle,
                             paymentMode = finalPaymentMode
                         )
                     } else {
@@ -754,10 +748,10 @@ fun LogEntryScreen(
                             initialTransaction.copy(
                                 ledgerBookId = targetBookId,
                                 type = selectedType,
-                                amount = parsedAmount!!,
+                                amount = flooredAmount,
                                 category = finalCategory,
                                 timestamp = timestamp,
-                                memo = title.trim(),
+                                memo = finalTitle,
                                 paymentMode = finalPaymentMode
                             )
                         )

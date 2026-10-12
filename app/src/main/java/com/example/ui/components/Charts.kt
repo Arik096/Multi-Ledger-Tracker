@@ -145,14 +145,14 @@ fun SpendingTrendChart(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Exp: ${String.format(Locale.US, "%.2f", activePoint.expense)}",
+                            text = "Exp: ${AmountFormatter.format(activePoint.expense, includeCommas = true)}",
                             fontSize = 12.sp,
                             color = CashOutRed,
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(text = " • ", fontSize = 12.sp)
                         Text(
-                            text = "Inc: ${String.format(Locale.US, "%.2f", activePoint.income)}",
+                            text = "Inc: ${AmountFormatter.format(activePoint.income, includeCommas = true)}",
                             fontSize = 12.sp,
                             color = CashInGreen,
                             fontWeight = FontWeight.SemiBold
@@ -432,7 +432,7 @@ fun CategoryDonutChart(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = String.format(Locale.US, "%,.2f", selectedCategory!!.amount),
+                            text = AmountFormatter.format(selectedCategory!!.amount, includeCommas = true),
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -448,7 +448,7 @@ fun CategoryDonutChart(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = String.format(Locale.US, "%,.2f", total),
+                            text = AmountFormatter.format(total, includeCommas = true),
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
                             color = MaterialTheme.colorScheme.onSurface
                         )

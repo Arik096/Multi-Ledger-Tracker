@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.TableChart
+import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -129,14 +130,13 @@ fun BookInsideScreen(
     onNavigateToCashOut: () -> Unit,
     onEditTransaction: (TransactionRecord) -> Unit,
     onOpenBookSettings: () -> Unit,
-    onOpenDriveBackup: () -> Unit,
+    onOpenImportCsv: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     val allTransactions by viewModel.allTransactions.collectAsStateWithLifecycle()
-    val amountPrecision by viewModel.amountPrecision.collectAsStateWithLifecycle()
 
     var searchQuery by remember { mutableStateOf("") }
     var selectedDateFilter by remember { mutableStateOf(BookDateQuickFilter.ALL) }
@@ -401,13 +401,13 @@ fun BookInsideScreen(
                             )
 
                             DropdownMenuItem(
-                                text = { Text("Google Drive Backup") },
+                                text = { Text("Import CSV to Book") },
                                 leadingIcon = {
-                                    Icon(Icons.Default.CloudDone, contentDescription = null)
+                                    Icon(Icons.Default.UploadFile, contentDescription = null)
                                 },
                                 onClick = {
                                     showOverflowMenu = false
-                                    onOpenDriveBackup()
+                                    onOpenImportCsv()
                                 }
                             )
                         }
@@ -808,7 +808,7 @@ fun BookInsideScreen(
                                 val sign = if (isPositive) "" else "-"
                                 val absNet = kotlin.math.abs(netBalance)
                                 Text(
-                                    text = "$sign${book.currencySymbol} ${AmountFormatter.format(absNet, amountPrecision, includeCommas = true)}",
+                                    text = "$sign${book.currencySymbol} ${AmountFormatter.format(absNet, includeCommas = true)}",
                                     color = Color.White,
                                     fontSize = 30.sp,
                                     fontWeight = FontWeight.ExtraBold,
@@ -857,7 +857,7 @@ fun BookInsideScreen(
                                                 letterSpacing = 0.5.sp,
                                                 maxLines = 1
                                             )
-                                            val formattedIn = formatDisplayAmount(totalIn, amountPrecision)
+                                            val formattedIn = formatDisplayAmount(totalIn)
                                             val inFontSize = if (formattedIn.length > 9) 12.sp else if (formattedIn.length > 6) 13.sp else 15.sp
                                             Text(
                                                 text = "+${book.currencySymbol}$formattedIn",
@@ -905,7 +905,7 @@ fun BookInsideScreen(
                                                 letterSpacing = 0.5.sp,
                                                 maxLines = 1
                                             )
-                                            val formattedOut = formatDisplayAmount(totalOut, amountPrecision)
+                                            val formattedOut = formatDisplayAmount(totalOut)
                                             val outFontSize = if (formattedOut.length > 9) 12.sp else if (formattedOut.length > 6) 13.sp else 15.sp
                                             Text(
                                                 text = "-${book.currencySymbol}$formattedOut",
@@ -990,7 +990,6 @@ fun BookInsideScreen(
                         BookTransactionRowItem(
                             tx = tx,
                             runningBalance = runningBal,
-                            precision = amountPrecision,
                             onClick = { onEditTransaction(tx) },
                             onDelete = { transactionToDelete = tx }
                         )
@@ -1007,7 +1006,7 @@ fun BookInsideScreen(
             onDismissRequest = { transactionToDelete = null },
             title = { Text("Delete Entry?", fontWeight = FontWeight.Bold) },
             text = {
-                Text("Delete '${tx.memo.ifBlank { tx.category }}' (${if (tx.type == TransactionType.CASH_IN) "+" else "-"}${formatDisplayAmount(tx.amount, amountPrecision)})?")
+                Text("Delete '${tx.memo.ifBlank { tx.category }}' (${if (tx.type == TransactionType.CASH_IN) "+" else "-"}${formatDisplayAmount(tx.amount)})?")
             },
             confirmButton = {
                 Button(
