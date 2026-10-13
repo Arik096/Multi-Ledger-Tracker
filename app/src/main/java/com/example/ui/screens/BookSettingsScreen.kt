@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -91,26 +92,44 @@ fun BookSettingsScreen(
     onSave: (LedgerBook) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var name by remember { mutableStateOf(book.name) }
-    var nameError by remember { mutableStateOf(false) }
-    var selectedColorHex by remember { mutableLongStateOf(book.colorHex) }
-    var isArchived by remember { mutableStateOf(book.isArchived) }
+    var name by remember(book.id) { mutableStateOf(book.name) }
+    var nameError by remember(book.id) { mutableStateOf(false) }
+    var selectedColorHex by remember(book.id) { mutableLongStateOf(book.colorHex) }
+    var isArchived by remember(book.id) { mutableStateOf(book.isArchived) }
 
     // Feature Toggles (User requirement: Categories & Transaction Type on/off, optional/mandatory)
-    var isCategoryEnabled by remember { mutableStateOf(book.isCategoryEnabled) }
-    var isCategoryMandatory by remember { mutableStateOf(book.isCategoryMandatory) }
-    var isTransactionTypeEnabled by remember { mutableStateOf(book.isTransactionTypeEnabled) }
-    var isTransactionTypeMandatory by remember { mutableStateOf(book.isTransactionTypeMandatory) }
+    var isCategoryEnabled by remember(book.id) { mutableStateOf(book.isCategoryEnabled) }
+    var isCategoryMandatory by remember(book.id) { mutableStateOf(book.isCategoryMandatory) }
+    var isTransactionTypeEnabled by remember(book.id) { mutableStateOf(book.isTransactionTypeEnabled) }
+    var isTransactionTypeMandatory by remember(book.id) { mutableStateOf(book.isTransactionTypeMandatory) }
 
     // Categories List (Independent, unified)
-    var categories by remember {
+    var categories by remember(book.id) {
         mutableStateOf(book.getCategories().toMutableList())
     }
-    var newCategoryText by remember { mutableStateOf("") }
-    var categoryToDelete by remember { mutableStateOf<String?>(null) }
+    var newCategoryText by remember(book.id) { mutableStateOf("") }
+    var categoryToDelete by remember(book.id) { mutableStateOf<String?>(null) }
 
     // Bulk Add Dialog
-    var showBulkAddDialog by remember { mutableStateOf(false) }
+    var showBulkAddDialog by remember(book.id) { mutableStateOf(false) }
+
+    fun performSave() {
+        if (name.isBlank()) {
+            nameError = true
+            return
+        }
+        val updated = book.copy(
+            name = name.trim(),
+            colorHex = selectedColorHex,
+            isArchived = isArchived,
+            isCategoryEnabled = isCategoryEnabled,
+            isCategoryMandatory = if (isCategoryEnabled) isCategoryMandatory else false,
+            isTransactionTypeEnabled = isTransactionTypeEnabled,
+            isTransactionTypeMandatory = if (isTransactionTypeEnabled) isTransactionTypeMandatory else false,
+            customCategories = categories.distinct().joinToString("||")
+        )
+        onSave(updated)
+    }
 
     // Support system back navigation gesture
     BackHandler {
@@ -149,23 +168,7 @@ fun BookSettingsScreen(
                 },
                 actions = {
                     Button(
-                        onClick = {
-                            if (name.isBlank()) {
-                                nameError = true
-                                return@Button
-                            }
-                            val updated = book.copy(
-                                name = name.trim(),
-                                colorHex = selectedColorHex,
-                                isArchived = isArchived,
-                                isCategoryEnabled = isCategoryEnabled,
-                                isCategoryMandatory = if (isCategoryEnabled) isCategoryMandatory else false,
-                                isTransactionTypeEnabled = isTransactionTypeEnabled,
-                                isTransactionTypeMandatory = if (isTransactionTypeEnabled) isTransactionTypeMandatory else false,
-                                customCategories = categories.distinct().joinToString("||")
-                            )
-                            onSave(updated)
-                        },
+                        onClick = { performSave() },
                         shape = RoundedCornerShape(12.dp),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         modifier = Modifier
@@ -234,7 +237,9 @@ fun BookSettingsScreen(
                     )
 
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         BookColors.forEach { colorHex ->
@@ -566,6 +571,22 @@ fun BookSettingsScreen(
                     }
                 }
             }
+
+            // 4. Prominent Bottom Save Button for all screen sizes & accessibility
+            Button(
+                onClick = { performSave() },
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .testTag("book_settings_bottom_save_button")
+            ) {
+                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Save Book Settings", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 

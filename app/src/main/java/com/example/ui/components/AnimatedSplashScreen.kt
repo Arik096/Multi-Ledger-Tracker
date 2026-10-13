@@ -141,7 +141,7 @@ fun AnimatedSplashScreen(
                         .alpha(alpha.value)
                         .shadow(16.dp, RoundedCornerShape(26.dp), spotColor = Color(0xFFF97316)),
                     shape = RoundedCornerShape(26.dp),
-                    color = Color(0xFF1E293B),
+                    color = MaterialTheme.colorScheme.surfaceContainer,
                     tonalElevation = 6.dp
                 ) {
                     Box(

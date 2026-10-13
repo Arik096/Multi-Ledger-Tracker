@@ -14,14 +14,14 @@ val SoftSagePrimary = Color(0xFF10B981)          // Vibrant soft mint
 // Shade 2: Container / Badge Tint
 val SoftSageContainerLight = Color(0xFFD1FAE5)    // Gentle pastel mint
 val SoftSageContainerDark = Color(0xFF1B4D3E)     // Soft forest container
-// Shade 3: Card Surface (clearly differentiated from canvas background)
-val SoftSageCardLight = Color(0xFFFFFFFF)         // Clean card white
+// Shade 3: Card Surface (Professional ash off-white, not harsh white or black)
+val SoftSageCardLight = Color(0xFFF7FAF8)         // Elegant ash off-white
 val SoftSageCardDark = Color(0xFF2C3646)          // Distinct elevated card slate
 // Shade 4: Elevated Container / Header
-val SoftSageElevatedLight = Color(0xFFE8F5ED)     // Tonal elevated card
+val SoftSageElevatedLight = Color(0xFFE8F1EC)     // Soft ash elevated container
 val SoftSageElevatedDark = Color(0xFF384456)      // High-tonal card surface
 // Shade 5: Canvas Background (soft, soothing, never harsh pitch-black)
-val SoftSageBgLight = Color(0xFFF1F5F2)           // Soft calming sage canvas
+val SoftSageBgLight = Color(0xFFEEF3F0)           // Soft calming sage canvas
 val SoftSageBgDark = Color(0xFF202732)            // Soft slate-graphite dark canvas
 
 // --- 2. Soft Iris Indigo ---
@@ -31,13 +31,13 @@ val SoftIndigoPrimary = Color(0xFF6366F1)
 val SoftIndigoContainerLight = Color(0xFFE0E7FF)
 val SoftIndigoContainerDark = Color(0xFF353468)
 // Shade 3: Card Surface
-val SoftIndigoCardLight = Color(0xFFFFFFFF)
+val SoftIndigoCardLight = Color(0xFFF6F7FA)       // Elegant ash off-white
 val SoftIndigoCardDark = Color(0xFF2B2F48)
 // Shade 4: Elevated Container / Header
-val SoftIndigoElevatedLight = Color(0xFFEEF2FF)
+val SoftIndigoElevatedLight = Color(0xFFEAEBF3)   // Soft ash elevated container
 val SoftIndigoElevatedDark = Color(0xFF373C5A)
 // Shade 5: Canvas Background
-val SoftIndigoBgLight = Color(0xFFF3F4FA)
+val SoftIndigoBgLight = Color(0xFFEFF1F8)
 val SoftIndigoBgDark = Color(0xFF202334)
 
 // --- 3. Soft Coral Rose ---
@@ -47,13 +47,13 @@ val SoftCoralPrimary = Color(0xFFF43F5E)
 val SoftCoralContainerLight = Color(0xFFFFE4E6)
 val SoftCoralContainerDark = Color(0xFF632535)
 // Shade 3: Card Surface
-val SoftCoralCardLight = Color(0xFFFFFFFF)
+val SoftCoralCardLight = Color(0xFFFAF6F7)        // Elegant ash off-white
 val SoftCoralCardDark = Color(0xFF352B31)
 // Shade 4: Elevated Container / Header
-val SoftCoralElevatedLight = Color(0xFFFFF0F2)
+val SoftCoralElevatedLight = Color(0xFFF2EAEC)   // Soft ash elevated container
 val SoftCoralElevatedDark = Color(0xFF44383F)
 // Shade 5: Canvas Background
-val SoftCoralBgLight = Color(0xFFFAF4F5)
+val SoftCoralBgLight = Color(0xFFF7EFF1)
 val SoftCoralBgDark = Color(0xFF262024)
 
 // --- 4. Soft Slate Blue ---
@@ -63,13 +63,13 @@ val SoftSlatePrimary = Color(0xFF0EA5E9)
 val SoftSlateContainerLight = Color(0xFFE0F2FE)
 val SoftSlateContainerDark = Color(0xFF1B4E6B)
 // Shade 3: Card Surface
-val SoftSlateCardLight = Color(0xFFFFFFFF)
+val SoftSlateCardLight = Color(0xFFF4F6F9)        // Elegant ash off-white
 val SoftSlateCardDark = Color(0xFF2B3445)
 // Shade 4: Elevated Container / Header
-val SoftSlateElevatedLight = Color(0xFFEDF4FA)
+val SoftSlateElevatedLight = Color(0xFFE7EBF0)   // Soft ash elevated container
 val SoftSlateElevatedDark = Color(0xFF374257)
 // Shade 5: Canvas Background
-val SoftSlateBgLight = Color(0xFFF1F5F9)
+val SoftSlateBgLight = Color(0xFFECF0F5)
 val SoftSlateBgDark = Color(0xFF1F2633)
 
 // --- 5. Soft Amber Honey ---
@@ -79,14 +79,20 @@ val SoftAmberPrimary = Color(0xFFD97706)
 val SoftAmberContainerLight = Color(0xFFFEF3C7)
 val SoftAmberContainerDark = Color(0xFF5C3B18)
 // Shade 3: Card Surface
-val SoftAmberCardLight = Color(0xFFFFFFFF)
+val SoftAmberCardLight = Color(0xFFFBF8F2)        // Elegant ash off-white
 val SoftAmberCardDark = Color(0xFF332D24)
 // Shade 4: Elevated Container / Header
-val SoftAmberElevatedLight = Color(0xFFFFF9E8)
+val SoftAmberElevatedLight = Color(0xFFF2ECE1)   // Soft ash elevated container
 val SoftAmberElevatedDark = Color(0xFF423B30)
 // Shade 5: Canvas Background
-val SoftAmberBgLight = Color(0xFFF9F6EE)
+val SoftAmberBgLight = Color(0xFFF6F2E8)
 val SoftAmberBgDark = Color(0xFF25221B)
+
+// Dedicated Ash and Off-White Color System for Light Mode (not too white, aesthetic & professional)
+val AshCardLight = Color(0xFFF4F6F9)
+val AshContainerLight = Color(0xFFEAEEF3)
+val AshElevatedLight = Color(0xFFE1E6EE)
+val AshBorderLight = Color(0xFFD5DCE6)
 
 // Neutral text & outline tokens
 val SoftOutlineLight = Color(0xFFE2E8F0)

@@ -91,6 +91,7 @@ import com.example.data.model.TransactionRecord
 import com.example.data.model.TransactionType
 import com.example.ui.theme.CashInGreen
 import com.example.ui.theme.CashOutRed
+import com.example.ui.theme.LocalIsDarkTheme
 import com.example.ui.viewmodel.LedgerViewModel
 import com.example.util.AmountFormatter
 import kotlinx.coroutines.launch
@@ -129,7 +130,7 @@ fun BookInsideScreen(
     onNavigateToCashIn: () -> Unit,
     onNavigateToCashOut: () -> Unit,
     onEditTransaction: (TransactionRecord) -> Unit,
-    onOpenBookSettings: () -> Unit,
+    onOpenBookSettings: (LedgerBook) -> Unit = {},
     onOpenImportCsv: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -396,7 +397,7 @@ fun BookInsideScreen(
                                 },
                                 onClick = {
                                     showOverflowMenu = false
-                                    onOpenBookSettings()
+                                    onOpenBookSettings(book)
                                 }
                             )
 
@@ -716,13 +717,22 @@ fun BookInsideScreen(
             item {
                 val bookColor = Color(book.colorHex)
                 val isPositive = netBalance >= 0
+                val isDark = LocalIsDarkTheme.current
+
+                val summaryCardBg = if (isDark) MaterialTheme.colorScheme.surfaceContainer else com.example.ui.theme.AshCardLight
+                val summaryCardGradientBottom = if (isDark) MaterialTheme.colorScheme.surfaceContainer else com.example.ui.theme.AshContainerLight
+                val summaryTextColor = if (isDark) Color.White else MaterialTheme.colorScheme.onSurface
+                val summarySubtitleColor = if (isDark) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant
+                val pillBgColor = if (isDark) Color.White.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                val statCardBg = if (isDark) Color.White.copy(alpha = 0.08f) else com.example.ui.theme.AshContainerLight
 
                 Card(
                     shape = RoundedCornerShape(24.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFF0F172A) // Dark slate background consistent with dashboard
+                        containerColor = summaryCardBg
                     ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+                    border = if (isDark) null else androidx.compose.foundation.BorderStroke(1.dp, com.example.ui.theme.AshBorderLight),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("book_summary_card")
@@ -733,8 +743,8 @@ fun BookInsideScreen(
                             .background(
                                 Brush.verticalGradient(
                                     colors = listOf(
-                                        bookColor.copy(alpha = 0.28f),
-                                        Color(0xFF0F172A)
+                                        bookColor.copy(alpha = if (isDark) 0.28f else 0.16f),
+                                        summaryCardGradientBottom
                                     )
                                 )
                             )
@@ -751,7 +761,7 @@ fun BookInsideScreen(
                             ) {
                                 Surface(
                                     shape = RoundedCornerShape(20.dp),
-                                    color = Color.White.copy(alpha = 0.12f)
+                                    color = pillBgColor
                                 ) {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
@@ -766,7 +776,7 @@ fun BookInsideScreen(
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text(
                                             text = book.name,
-                                            color = Color.White,
+                                            color = summaryTextColor,
                                             fontSize = 13.sp,
                                             fontWeight = FontWeight.SemiBold,
                                             maxLines = 1,
@@ -777,11 +787,11 @@ fun BookInsideScreen(
 
                                 Surface(
                                     shape = RoundedCornerShape(12.dp),
-                                    color = Color.White.copy(alpha = 0.08f)
+                                    color = pillBgColor
                                 ) {
                                     Text(
                                         text = if (book.isArchived) "Archived" else "Active",
-                                        color = Color.White.copy(alpha = 0.7f),
+                                        color = summarySubtitleColor,
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Medium,
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -794,7 +804,7 @@ fun BookInsideScreen(
                             // Net Balance Title & Amount
                             Text(
                                 text = "NET BALANCE",
-                                color = Color.White.copy(alpha = 0.65f),
+                                color = summarySubtitleColor,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.sp
@@ -809,7 +819,7 @@ fun BookInsideScreen(
                                 val absNet = kotlin.math.abs(netBalance)
                                 Text(
                                     text = "$sign${book.currencySymbol} ${AmountFormatter.format(absNet, includeCommas = true)}",
-                                    color = Color.White,
+                                    color = summaryTextColor,
                                     fontSize = 30.sp,
                                     fontWeight = FontWeight.ExtraBold,
                                     letterSpacing = (-0.5).sp
@@ -826,7 +836,8 @@ fun BookInsideScreen(
                                 // Cash In Card
                                 Surface(
                                     shape = RoundedCornerShape(14.dp),
-                                    color = Color.White.copy(alpha = 0.08f),
+                                    color = statCardBg,
+                                    border = if (isDark) null else androidx.compose.foundation.BorderStroke(1.dp, com.example.ui.theme.AshBorderLight),
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Row(
@@ -837,13 +848,13 @@ fun BookInsideScreen(
                                             modifier = Modifier
                                                 .size(28.dp)
                                                 .clip(CircleShape)
-                                                .background(Color.White.copy(alpha = 0.12f)),
+                                                .background(CashInGreen.copy(alpha = 0.15f)),
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Default.ArrowUpward,
                                                 contentDescription = null,
-                                                tint = Color(0xFF4ADE80),
+                                                tint = CashInGreen,
                                                 modifier = Modifier.size(15.dp)
                                             )
                                         }
@@ -851,7 +862,7 @@ fun BookInsideScreen(
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(
                                                 text = "TOTAL IN",
-                                                color = Color.White.copy(alpha = 0.7f),
+                                                color = summarySubtitleColor,
                                                 fontSize = 9.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 letterSpacing = 0.5.sp,
@@ -861,7 +872,7 @@ fun BookInsideScreen(
                                             val inFontSize = if (formattedIn.length > 9) 12.sp else if (formattedIn.length > 6) 13.sp else 15.sp
                                             Text(
                                                 text = "+${book.currencySymbol}$formattedIn",
-                                                color = Color(0xFF4ADE80),
+                                                color = CashInGreen,
                                                 fontSize = inFontSize,
                                                 fontWeight = FontWeight.Bold,
                                                 maxLines = 1,
@@ -874,7 +885,8 @@ fun BookInsideScreen(
                                 // Cash Out Card
                                 Surface(
                                     shape = RoundedCornerShape(14.dp),
-                                    color = Color.White.copy(alpha = 0.08f),
+                                    color = statCardBg,
+                                    border = if (isDark) null else androidx.compose.foundation.BorderStroke(1.dp, com.example.ui.theme.AshBorderLight),
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Row(
@@ -885,13 +897,13 @@ fun BookInsideScreen(
                                             modifier = Modifier
                                                 .size(28.dp)
                                                 .clip(CircleShape)
-                                                .background(Color.White.copy(alpha = 0.12f)),
+                                                .background(CashOutRed.copy(alpha = 0.15f)),
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Default.ArrowDownward,
                                                 contentDescription = null,
-                                                tint = Color(0xFFF87171),
+                                                tint = CashOutRed,
                                                 modifier = Modifier.size(15.dp)
                                             )
                                         }
@@ -899,7 +911,7 @@ fun BookInsideScreen(
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(
                                                 text = "TOTAL OUT",
-                                                color = Color.White.copy(alpha = 0.7f),
+                                                color = summarySubtitleColor,
                                                 fontSize = 9.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 letterSpacing = 0.5.sp,
@@ -909,7 +921,7 @@ fun BookInsideScreen(
                                             val outFontSize = if (formattedOut.length > 9) 12.sp else if (formattedOut.length > 6) 13.sp else 15.sp
                                             Text(
                                                 text = "-${book.currencySymbol}$formattedOut",
-                                                color = Color(0xFFF87171),
+                                                color = CashOutRed,
                                                 fontSize = outFontSize,
                                                 fontWeight = FontWeight.Bold,
                                                 maxLines = 1,
@@ -1046,12 +1058,21 @@ fun BookTransactionRowItem(
         SimpleDateFormat("dd MMM, yyyy • h:mm a", Locale.US).format(Date(tx.timestamp))
     }
 
+    val isDark = LocalIsDarkTheme.current
+    val cardBg = if (isDark) MaterialTheme.colorScheme.surfaceContainer else com.example.ui.theme.AshCardLight
+    val textColor = if (isDark) Color.White else MaterialTheme.colorScheme.onSurface
+    val textSubColor = if (isDark) Color.White.copy(alpha = 0.65f) else MaterialTheme.colorScheme.onSurfaceVariant
+    val badgeBg = if (isDark) Color.White.copy(alpha = 0.10f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
+    val categoryBadgeText = if (isDark) Color(0xFF93C5FD) else MaterialTheme.colorScheme.primary
+    val modeBadgeText = if (isDark) Color(0xFF7DD3FC) else MaterialTheme.colorScheme.secondary
+
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF0F172A) // Dark slate container consistent with dashboard cards
+            containerColor = cardBg
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = if (isDark) null else androidx.compose.foundation.BorderStroke(1.dp, com.example.ui.theme.AshBorderLight),
         modifier = modifier
             .fillMaxWidth()
             .clickable { onClick() }
@@ -1077,13 +1098,13 @@ fun BookTransactionRowItem(
                     // Category Badge
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = Color.White.copy(alpha = 0.10f)
+                        color = badgeBg
                     ) {
                         Text(
                             text = tx.category.ifBlank { "General" },
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF93C5FD),
+                            color = categoryBadgeText,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
@@ -1092,13 +1113,13 @@ fun BookTransactionRowItem(
                     val mode = tx.paymentMode ?: "Online"
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = Color.White.copy(alpha = 0.08f)
+                        color = badgeBg
                     ) {
                         Text(
                             text = mode,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF7DD3FC),
+                            color = modeBadgeText,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
@@ -1109,7 +1130,7 @@ fun BookTransactionRowItem(
                     text = "${if (isCashIn) "+" else "-"}${formatDisplayAmount(tx.amount, precision)}",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (isCashIn) Color(0xFF4ADE80) else Color(0xFFF87171)
+                    color = if (isCashIn) CashInGreen else CashOutRed
                 )
             }
 
@@ -1123,7 +1144,7 @@ fun BookTransactionRowItem(
                     text = tx.memo.ifBlank { tx.category },
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color.White,
+                    color = textColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
@@ -1135,7 +1156,7 @@ fun BookTransactionRowItem(
                     text = "Balance: ${formatDisplayAmount(runningBalance, precision)}",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color.White.copy(alpha = 0.65f)
+                    color = textSubColor
                 )
             }
 
@@ -1152,13 +1173,13 @@ fun BookTransactionRowItem(
                     Icon(
                         imageVector = Icons.Default.Schedule,
                         contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.5f),
+                        tint = textSubColor.copy(alpha = 0.7f),
                         modifier = Modifier.size(13.dp)
                     )
                     Text(
                         text = dateTimeFormatted,
                         fontSize = 11.sp,
-                        color = Color.White.copy(alpha = 0.65f),
+                        color = textSubColor,
                         fontWeight = FontWeight.Normal
                     )
                 }
@@ -1171,7 +1192,7 @@ fun BookTransactionRowItem(
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Delete",
-                        tint = Color.White.copy(alpha = 0.4f),
+                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.65f),
                         modifier = Modifier.size(14.dp)
                     )
                 }

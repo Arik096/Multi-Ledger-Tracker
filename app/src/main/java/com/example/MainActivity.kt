@@ -259,6 +259,9 @@ fun MainAppScreen(
             onNavigateBack = {
                 isViewingDashboardForBook = null
                 activeBookInside = null
+            },
+            onOpenBookSettings = { book ->
+                bookForSettings = book
             }
         )
     } else if (currentActiveBook != null) {
@@ -280,7 +283,7 @@ fun MainAppScreen(
                 isLoggingEntry = true
             },
             onEditTransaction = { tx -> editingTransaction = tx },
-            onOpenBookSettings = { bookForSettings = currentActiveBook },
+            onOpenBookSettings = { book -> bookForSettings = book },
             onOpenImportCsv = {
                 bookForImportCsv = currentActiveBook
                 showCsvImportDialog = true
@@ -403,6 +406,7 @@ fun MainAppScreen(
                         },
                         onOpenDriveBackup = { currentTab = MainTab.PROFILE },
                         onNavigateBack = null,
+                        onOpenBookSettings = { book -> bookForSettings = book },
                         modifier = Modifier.padding(innerPadding)
                     )
                 }

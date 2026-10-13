@@ -329,6 +329,42 @@ fun LedgersScreen(
                 )
             }
 
+            // Section Mark Row (Matching the other pages)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 2.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (selectedTab == 0) Icons.Default.MenuBook else Icons.Default.Archive,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = if (selectedTab == 0) "All Books" else "Archived Books",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                    Text(
+                        text = "${currentList.size} book${if (currentList.size != 1) "s" else ""} • Select to manage records",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
             // Book List
             if (currentList.isEmpty()) {
                 Box(
@@ -434,8 +470,8 @@ fun LedgersScreen(
                                 // 1. Book Avatar Icon
                                 Box(
                                     modifier = Modifier
-                                        .size(48.dp)
-                                        .clip(CircleShape)
+                                        .size(44.dp)
+                                        .clip(RoundedCornerShape(14.dp))
                                         .background(bookColor.copy(alpha = 0.18f)),
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -443,7 +479,7 @@ fun LedgersScreen(
                                         imageVector = Icons.Default.MenuBook,
                                         contentDescription = null,
                                         tint = bookColor,
-                                        modifier = Modifier.size(24.dp)
+                                        modifier = Modifier.size(22.dp)
                                     )
                                 }
 
