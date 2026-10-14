@@ -296,10 +296,10 @@ class LedgerViewModel(
         }
     }
 
-    fun signInWithGoogle(onComplete: ((Boolean, String) -> Unit)? = null) {
+    fun signInWithGoogle(activityContext: Context? = null, onComplete: ((Boolean, String) -> Unit)? = null) {
         viewModelScope.launch {
             _isCloudSyncing.value = true
-            when (val result = authManager.signInWithGoogle()) {
+            when (val result = authManager.signInWithGoogle(activityContext)) {
                 is AuthResult.Success -> {
                     val email = result.user.email ?: ""
                     _driveAccountEmail.value = email
@@ -324,9 +324,28 @@ class LedgerViewModel(
                 is AuthResult.Error -> {
                     _isCloudSyncing.value = false
                     _snackbarMessage.emit("Sign-in failed: ${result.message}")
-                    onComplete?.invoke(false, "Error: ${result.message}")
+                    onComplete?.invoke(false, result.message)
                 }
             }
+        }
+    }
+
+    fun connectGoogleEmail(email: String, onComplete: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            val clean = email.trim().lowercase()
+            if (clean.isBlank() || !clean.contains("@")) {
+                onComplete(false, "Please enter a valid Google email address")
+                return@launch
+            }
+            AppPreferencesManager.setGoogleAccountEmail(getApplication(), clean)
+            _driveAccountEmail.value = clean
+            val name = clean.substringBefore("@").replaceFirstChar { it.uppercase() }
+            _userName.value = name
+            AppPreferencesManager.setUserName(getApplication(), name)
+
+            val (foundData, restoreMsg) = syncService.checkAndRestorePreviousData(clean)
+            _snackbarMessage.emit("Connected as $clean")
+            onComplete(true, restoreMsg)
         }
     }
 

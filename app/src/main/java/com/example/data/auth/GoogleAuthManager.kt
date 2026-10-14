@@ -20,6 +20,15 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
+import android.app.Activity
+import android.content.ContextWrapper
+
+tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
+
 sealed interface AuthResult {
     data class Success(val user: FirebaseUser) : AuthResult
     data object Cancelled : AuthResult
@@ -44,19 +53,32 @@ class GoogleAuthManager(
         awaitClose { auth.removeAuthStateListener(listener) }
     }
 
-    suspend fun signInWithGoogle(): AuthResult {
+    suspend fun signInWithGoogle(activityContext: Context? = null): AuthResult {
         return try {
-            val serverClientId = context.getString(R.string.default_web_client_id)
+            val targetContext = activityContext?.findActivity() ?: activityContext ?: context
+            val serverClientId = runCatching { context.getString(R.string.default_web_client_id) }
+                .getOrNull()
+                ?.takeIf { it.isNotBlank() }
+                ?: "94131105644-ognvdtbdva2v3d6e17lnj00co6q8suci.apps.googleusercontent.com"
+
             val signInWithGoogleOption = GetSignInWithGoogleOption.Builder(serverClientId)
+                .build()
+
+            val googleIdOption = GetGoogleIdOption.Builder()
+                .setFilterByAuthorizedAccounts(false)
+                .setServerClientId(serverClientId)
+                .setAutoSelectEnabled(false)
                 .build()
 
             val request = GetCredentialRequest.Builder()
                 .addCredentialOption(signInWithGoogleOption)
+                .addCredentialOption(googleIdOption)
                 .build()
 
-            val result = credentialManager.getCredential(
+            val activeManager = if (activityContext != null) CredentialManager.create(targetContext) else credentialManager
+            val result = activeManager.getCredential(
                 request = request,
-                context = context
+                context = targetContext
             )
 
             val credential = result.credential
@@ -64,7 +86,11 @@ class GoogleAuthManager(
                 credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
             ) {
                 val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
-                val authCredential = GoogleAuthProvider.getCredential(googleIdTokenCredential.idToken, null)
+                val idToken = googleIdTokenCredential.idToken
+                if (idToken.isBlank()) {
+                    return AuthResult.Error("Google ID token is empty")
+                }
+                val authCredential = GoogleAuthProvider.getCredential(idToken, null)
                 val authResult = auth.signInWithCredential(authCredential).await()
                 val user = authResult.user
                 if (user != null) {
@@ -79,8 +105,17 @@ class GoogleAuthManager(
             Log.w("GoogleAuthManager", "Google Sign-In was cancelled by the user", e)
             AuthResult.Cancelled
         } catch (e: GetCredentialException) {
-            Log.e("GoogleAuthManager", "GetCredentialException during sign-in", e)
-            AuthResult.Error(e.localizedMessage ?: "Google Sign-In failed")
+            Log.e("GoogleAuthManager", "GetCredentialException during sign-in: type=${e.type}, msg=${e.message}", e)
+            val msg = when {
+                e.message?.contains("no credentials", ignoreCase = true) == true ||
+                        e.type.contains("NO_CREDENTIAL", ignoreCase = true) ->
+                    "No Google accounts found on this device. Please sign in or use Google Account Email option."
+                e.message?.contains("canceled", ignoreCase = true) == true ||
+                        e.message?.contains("cancelled", ignoreCase = true) == true ->
+                    "Sign-in was cancelled."
+                else -> e.localizedMessage ?: "Google Sign-In failed"
+            }
+            AuthResult.Error(msg)
         } catch (e: Exception) {
             Log.e("GoogleAuthManager", "Unexpected error during Google Sign-In", e)
             AuthResult.Error(e.localizedMessage ?: "Authentication failed")

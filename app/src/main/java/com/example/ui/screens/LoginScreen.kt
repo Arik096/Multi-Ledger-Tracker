@@ -48,6 +48,14 @@ import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.ui.viewmodel.LedgerViewModel
 
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
+import com.example.data.auth.findActivity
+
 /**
  * Simplified, uncluttered Login Screen.
  * Feature list cards are removed as requested, focusing directly on the Google Sign-In action.
@@ -55,11 +63,15 @@ import com.example.ui.viewmodel.LedgerViewModel
 @Composable
 fun LoginScreen(
     viewModel: LedgerViewModel,
-    onLoginSuccess: () -> Unit
+    onLoginSuccess: () -> Unit,
+    onContinueOffline: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var isSigningIn by remember { mutableStateOf(false) }
     var statusText by remember { mutableStateOf<String?>(null) }
+    var showEmailDialog by remember { mutableStateOf(false) }
+    var emailInput by remember { mutableStateOf("") }
+    var emailError by remember { mutableStateOf<String?>(null) }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -68,7 +80,7 @@ fun LoginScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 32.dp, vertical = 48.dp),
+                .padding(horizontal = 32.dp, vertical = 40.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -117,22 +129,23 @@ fun LoginScreen(
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
 
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(36.dp))
 
             // Google Sign-In Primary Button
             Button(
                 onClick = {
                     if (isSigningIn) return@Button
                     isSigningIn = true
-                    statusText = "Checking account & cloud vault..."
-                    viewModel.signInWithGoogle { success, message ->
+                    statusText = "Connecting with Google..."
+                    val activity = context.findActivity() ?: context
+                    viewModel.signInWithGoogle(activity) { success, message ->
                         isSigningIn = false
                         statusText = null
                         if (success) {
                             Toast.makeText(context, message, Toast.LENGTH_LONG).show()
                             onLoginSuccess()
                         } else {
-                            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
                         }
                     }
                 },
@@ -178,7 +191,44 @@ fun LoginScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Secondary option: Sign in with Google Account Email
+            OutlinedButton(
+                onClick = { showEmailDialog = true },
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp)
+                    .testTag("btn_link_google_email")
+            ) {
+                Icon(Icons.Default.Email, contentDescription = null, modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Sign in with Google Email", fontWeight = FontWeight.SemiBold)
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Fallback: Continue in Offline Mode
+            TextButton(
+                onClick = onContinueOffline,
+                modifier = Modifier.testTag("btn_continue_offline")
+            ) {
+                Icon(
+                    Icons.Default.CloudOff,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    "Continue in Offline Mode",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
 
             AnimatedVisibility(
                 visible = statusText != null,
@@ -203,5 +253,70 @@ fun LoginScreen(
                 textAlign = TextAlign.Center
             )
         }
+    }
+
+    if (showEmailDialog) {
+        AlertDialog(
+            onDismissRequest = { showEmailDialog = false },
+            icon = {
+                Icon(
+                    Icons.Default.Email,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(28.dp)
+                )
+            },
+            title = {
+                Text("Sign In with Google Email", fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Column {
+                    Text(
+                        "Enter your Google account email to link your profile and restore cloud-synced books.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                    OutlinedTextField(
+                        value = emailInput,
+                        onValueChange = {
+                            emailInput = it
+                            emailError = null
+                        },
+                        label = { Text("Google Account Email") },
+                        placeholder = { Text("e.g. user@gmail.com") },
+                        singleLine = true,
+                        isError = emailError != null,
+                        supportingText = if (emailError != null) { { Text(emailError!!) } } else null,
+                        modifier = Modifier.fillMaxWidth().testTag("input_google_email")
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (!emailInput.contains("@") || emailInput.isBlank()) {
+                            emailError = "Please enter a valid email address"
+                            return@Button
+                        }
+                        showEmailDialog = false
+                        viewModel.connectGoogleEmail(emailInput) { success, msg ->
+                            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                            if (success) {
+                                onLoginSuccess()
+                            }
+                        }
+                    },
+                    modifier = Modifier.testTag("btn_confirm_google_email")
+                ) {
+                    Text("Connect & Sync")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEmailDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }

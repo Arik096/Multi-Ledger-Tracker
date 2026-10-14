@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.CloudQueue
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LightMode
@@ -62,6 +63,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -91,6 +93,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.example.data.auth.findActivity
 import com.example.data.cloud.CloudStorageManager
 import com.example.data.io.BackupResult
 import com.example.data.preferences.ModernPalette
@@ -128,6 +131,8 @@ fun UserProfileScreen(
     // Dialog states
     var showDisconnectConfirmDialog by remember { mutableStateOf(false) }
     var showCurrencyDialog by remember { mutableStateOf(false) }
+    var showLinkEmailDialog by remember { mutableStateOf(false) }
+    var emailInput by remember { mutableStateOf("") }
 
     var statusMessage by remember { mutableStateOf<String?>(null) }
     var isSuccessStatus by remember { mutableStateOf(true) }
@@ -257,7 +262,17 @@ fun UserProfileScreen(
                     onSyncNow = {
                         viewModel.triggerAutoSync(showToast = true)
                     },
-                    onSignOutClick = { showDisconnectConfirmDialog = true }
+                    onSignOutClick = { showDisconnectConfirmDialog = true },
+                    onSignInClick = {
+                        val activity = context.findActivity() ?: context
+                        viewModel.signInWithGoogle(activity) { success, msg ->
+                            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                        }
+                    },
+                    onLinkEmailClick = {
+                        emailInput = driveAccountEmail
+                        showLinkEmailDialog = true
+                    }
                 )
             }
 
@@ -340,6 +355,70 @@ fun UserProfileScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showDisconnectConfirmDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Dialog: Link Google Account Email
+    if (showLinkEmailDialog) {
+        var emailError by remember { mutableStateOf<String?>(null) }
+        AlertDialog(
+            onDismissRequest = { showLinkEmailDialog = false },
+            icon = {
+                Icon(
+                    Icons.Default.Email,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(28.dp)
+                )
+            },
+            title = {
+                Text("Link Google Account Email", fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Column {
+                    Text(
+                        "Enter your Google account email to link with Firestore cloud sync and restore data across devices.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                    OutlinedTextField(
+                        value = emailInput,
+                        onValueChange = {
+                            emailInput = it
+                            emailError = null
+                        },
+                        label = { Text("Google Email") },
+                        placeholder = { Text("e.g. user@gmail.com") },
+                        singleLine = true,
+                        isError = emailError != null,
+                        supportingText = if (emailError != null) { { Text(emailError!!) } } else null,
+                        modifier = Modifier.fillMaxWidth().testTag("input_profile_google_email")
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (!emailInput.contains("@") || emailInput.isBlank()) {
+                            emailError = "Please enter a valid email address"
+                            return@Button
+                        }
+                        showLinkEmailDialog = false
+                        viewModel.connectGoogleEmail(emailInput) { success, msg ->
+                            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                        }
+                    },
+                    modifier = Modifier.testTag("btn_confirm_profile_google_email")
+                ) {
+                    Text("Save & Sync")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLinkEmailDialog = false }) {
                     Text("Cancel")
                 }
             }
@@ -604,7 +683,9 @@ private fun FirestoreCloudSyncCard(
     isSyncing: Boolean,
     lastBackupSummary: String,
     onSyncNow: () -> Unit,
-    onSignOutClick: () -> Unit
+    onSignOutClick: () -> Unit,
+    onSignInClick: () -> Unit = {},
+    onLinkEmailClick: () -> Unit = {}
 ) {
     Card(
         shape = RoundedCornerShape(20.dp),
@@ -699,30 +780,30 @@ private fun FirestoreCloudSyncCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Button(
-                    onClick = onSyncNow,
-                    enabled = isConnected && !isSyncing,
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("btn_sync_now"),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    if (isSyncing) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Syncing...")
-                    } else {
-                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Sync Now")
-                    }
-                }
-
                 if (isConnected) {
+                    Button(
+                        onClick = onSyncNow,
+                        enabled = !isSyncing,
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("btn_sync_now"),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        if (isSyncing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Syncing...")
+                        } else {
+                            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Sync Now")
+                        }
+                    }
+
                     OutlinedButton(
                         onClick = onSignOutClick,
                         shape = RoundedCornerShape(12.dp),
@@ -731,6 +812,28 @@ private fun FirestoreCloudSyncCard(
                         modifier = Modifier.testTag("btn_sign_out")
                     ) {
                         Text("Sign Out")
+                    }
+                } else {
+                    Button(
+                        onClick = onSignInClick,
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("btn_profile_sign_in_google"),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.AccountCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Sign in with Google")
+                    }
+
+                    OutlinedButton(
+                        onClick = onLinkEmailClick,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.testTag("btn_profile_link_email")
+                    ) {
+                        Icon(Icons.Default.Email, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Link Email")
                     }
                 }
             }
