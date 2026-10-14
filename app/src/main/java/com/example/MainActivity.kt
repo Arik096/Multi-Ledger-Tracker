@@ -8,6 +8,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,19 +21,27 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.outlined.AccountBalance
+import androidx.compose.material.icons.outlined.Dashboard
+import androidx.compose.material.icons.outlined.MenuBook
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import com.example.ui.theme.ClashGroteskFont
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -294,88 +303,128 @@ fun MainAppScreen(
             modifier = Modifier.fillMaxSize(),
             snackbarHost = { SnackbarHost(snackbarHostState) },
             bottomBar = {
-                NavigationBar(
-                    modifier = Modifier.testTag("main_bottom_navigation")
-                ) {
-                    NavigationBarItem(
-                        selected = currentTab == MainTab.BOOKS,
-                        onClick = { currentTab = MainTab.BOOKS },
-                        icon = {
-                            Icon(
-                                imageVector = Icons.Default.MenuBook,
-                                contentDescription = "Books",
-                                modifier = Modifier.size(22.dp)
-                            )
-                        },
-                        label = {
-                            Text(
-                                text = "Books",
-                                fontSize = 12.sp,
-                                fontWeight = if (currentTab == MainTab.BOOKS) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        modifier = Modifier.testTag("nav_tab_books")
+                Column {
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                        thickness = 0.75.dp
                     )
+                    NavigationBar(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        tonalElevation = 3.dp,
+                        modifier = Modifier.testTag("main_bottom_navigation")
+                    ) {
+                        NavigationBarItem(
+                            selected = currentTab == MainTab.BOOKS,
+                            onClick = { currentTab = MainTab.BOOKS },
+                            icon = {
+                                Icon(
+                                    imageVector = if (currentTab == MainTab.BOOKS) Icons.Filled.MenuBook else Icons.Outlined.MenuBook,
+                                    contentDescription = "Books",
+                                    modifier = Modifier.size(23.dp)
+                                )
+                            },
+                            label = {
+                                Text(
+                                    text = "Books",
+                                    fontFamily = ClashGroteskFont,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (currentTab == MainTab.BOOKS) FontWeight.Bold else FontWeight.Medium
+                                )
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                selectedTextColor = MaterialTheme.colorScheme.primary,
+                                indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            modifier = Modifier.testTag("nav_tab_books")
+                        )
 
-                    NavigationBarItem(
-                        selected = currentTab == MainTab.DASHBOARD,
-                        onClick = { currentTab = MainTab.DASHBOARD },
-                        icon = {
-                            Icon(
-                                imageVector = Icons.Default.Dashboard,
-                                contentDescription = "Dashboard",
-                                modifier = Modifier.size(22.dp)
-                            )
-                        },
-                        label = {
-                            Text(
-                                text = "Dashboard",
-                                fontSize = 12.sp,
-                                fontWeight = if (currentTab == MainTab.DASHBOARD) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        modifier = Modifier.testTag("nav_tab_dashboard")
-                    )
+                        NavigationBarItem(
+                            selected = currentTab == MainTab.DASHBOARD,
+                            onClick = { currentTab = MainTab.DASHBOARD },
+                            icon = {
+                                Icon(
+                                    imageVector = if (currentTab == MainTab.DASHBOARD) Icons.Filled.Dashboard else Icons.Outlined.Dashboard,
+                                    contentDescription = "Dashboard",
+                                    modifier = Modifier.size(23.dp)
+                                )
+                            },
+                            label = {
+                                Text(
+                                    text = "Dashboard",
+                                    fontFamily = ClashGroteskFont,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (currentTab == MainTab.DASHBOARD) FontWeight.Bold else FontWeight.Medium
+                                )
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                selectedTextColor = MaterialTheme.colorScheme.primary,
+                                indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            modifier = Modifier.testTag("nav_tab_dashboard")
+                        )
 
-                    NavigationBarItem(
-                        selected = currentTab == MainTab.CASH_POSITION,
-                        onClick = { currentTab = MainTab.CASH_POSITION },
-                        icon = {
-                            Icon(
-                                imageVector = Icons.Default.AccountBalance,
-                                contentDescription = "Cash Position",
-                                modifier = Modifier.size(22.dp)
-                            )
-                        },
-                        label = {
-                            Text(
-                                text = "Position",
-                                fontSize = 12.sp,
-                                fontWeight = if (currentTab == MainTab.CASH_POSITION) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        modifier = Modifier.testTag("nav_tab_cash_position")
-                    )
+                        NavigationBarItem(
+                            selected = currentTab == MainTab.CASH_POSITION,
+                            onClick = { currentTab = MainTab.CASH_POSITION },
+                            icon = {
+                                Icon(
+                                    imageVector = if (currentTab == MainTab.CASH_POSITION) Icons.Filled.AccountBalance else Icons.Outlined.AccountBalance,
+                                    contentDescription = "Cash Position",
+                                    modifier = Modifier.size(23.dp)
+                                )
+                            },
+                            label = {
+                                Text(
+                                    text = "Position",
+                                    fontFamily = ClashGroteskFont,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (currentTab == MainTab.CASH_POSITION) FontWeight.Bold else FontWeight.Medium
+                                )
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                selectedTextColor = MaterialTheme.colorScheme.primary,
+                                indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            modifier = Modifier.testTag("nav_tab_cash_position")
+                        )
 
-                    NavigationBarItem(
-                        selected = currentTab == MainTab.PROFILE,
-                        onClick = { currentTab = MainTab.PROFILE },
-                        icon = {
-                            Icon(
-                                imageVector = Icons.Default.AccountCircle,
-                                contentDescription = "Profile",
-                                modifier = Modifier.size(22.dp)
-                            )
-                        },
-                        label = {
-                            Text(
-                                text = "Profile",
-                                fontSize = 12.sp,
-                                fontWeight = if (currentTab == MainTab.PROFILE) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        modifier = Modifier.testTag("nav_tab_profile")
-                    )
+                        NavigationBarItem(
+                            selected = currentTab == MainTab.PROFILE,
+                            onClick = { currentTab = MainTab.PROFILE },
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Default.AccountCircle,
+                                    contentDescription = "Profile",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            },
+                            label = {
+                                Text(
+                                    text = "Profile",
+                                    fontFamily = ClashGroteskFont,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (currentTab == MainTab.PROFILE) FontWeight.Bold else FontWeight.Medium
+                                )
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                selectedTextColor = MaterialTheme.colorScheme.primary,
+                                indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            modifier = Modifier.testTag("nav_tab_profile")
+                        )
+                    }
                 }
             }
         ) { innerPadding ->
@@ -391,7 +440,7 @@ fun MainAppScreen(
                             bookForSettings = book
                         },
                         onOpenDriveBackup = { currentTab = MainTab.PROFILE },
-                        onNavigateBack = { showExitConfirmDialog = true },
+                        onNavigateBack = null,
                         modifier = Modifier.padding(innerPadding)
                     )
                 }

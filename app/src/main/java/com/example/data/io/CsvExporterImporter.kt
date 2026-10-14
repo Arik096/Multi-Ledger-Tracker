@@ -107,19 +107,28 @@ object CsvExporterImporter {
                 val category = tx.category.ifBlank { "General" }
                 val mode = tx.paymentMode.ifBlank { "Cash" }
 
-                val wholeAmount = floor(tx.amount).toLong()
+                val amountStr = if (tx.amount % 1.0 == 0.0) {
+                    tx.amount.toLong().toString()
+                } else {
+                    String.format(Locale.US, "%.2f", tx.amount)
+                }
+
                 val cashInStr: String
                 val cashOutStr: String
                 if (tx.type == TransactionType.CASH_IN) {
-                    runningBalance += wholeAmount
-                    cashInStr = wholeAmount.toString()
+                    runningBalance += tx.amount
+                    cashInStr = amountStr
                     cashOutStr = ""
                 } else {
-                    runningBalance -= wholeAmount
+                    runningBalance -= tx.amount
                     cashInStr = ""
-                    cashOutStr = wholeAmount.toString()
+                    cashOutStr = amountStr
                 }
-                val balanceStr = floor(runningBalance).toLong().toString()
+                val balanceStr = if (runningBalance % 1.0 == 0.0) {
+                    runningBalance.toLong().toString()
+                } else {
+                    String.format(Locale.US, "%.2f", runningBalance)
+                }
 
                 appendLine("\"$dateStr\",\"$timeStr\",\"${escapeCsv(remark)}\",\"${escapeCsv(category)}\",\"${escapeCsv(mode)}\",\"$cashInStr\",\"$cashOutStr\",\"$balanceStr\"")
             }
@@ -231,9 +240,11 @@ object CsvExporterImporter {
 
             val errors = mutableListOf<String>()
 
-            // 1. Parse Date and Time (gracefully fallback to current time if unparseable so entry is never dropped)
+            // 1. Parse Date and Time
             var parsedTimestamp = parseDateWithTime(dateStr, timeStr)
-            if (parsedTimestamp == null) {
+            if (dateStr.isNotBlank() && parsedTimestamp == null) {
+                errors.add("Invalid Date: $dateStr")
+            } else if (parsedTimestamp == null) {
                 parsedTimestamp = System.currentTimeMillis()
             }
 
@@ -252,14 +263,14 @@ object CsvExporterImporter {
 
                 if (inAmt != null && inAmt > 0) {
                     parsedType = TransactionType.CASH_IN
-                    parsedAmount = floor(inAmt)
+                    parsedAmount = inAmt
                     typeStr = "Cash In"
-                    amountStr = parsedAmount.toLong().toString()
+                    amountStr = if (inAmt % 1.0 == 0.0) inAmt.toLong().toString() else String.format(Locale.US, "%.2f", inAmt)
                 } else if (outAmt != null && outAmt > 0) {
                     parsedType = TransactionType.CASH_OUT
-                    parsedAmount = floor(outAmt)
+                    parsedAmount = outAmt
                     typeStr = "Cash Out"
-                    amountStr = parsedAmount.toLong().toString()
+                    amountStr = if (outAmt % 1.0 == 0.0) outAmt.toLong().toString() else String.format(Locale.US, "%.2f", outAmt)
                 }
             }
 
@@ -268,35 +279,27 @@ object CsvExporterImporter {
                 val tStr = if (typeIdx != -1) tokens.getOrNull(typeIdx)?.trim() ?: "" else ""
                 val aStr = if (amountIdx != -1) tokens.getOrNull(amountIdx)?.trim() ?: "" else ""
 
-                var num = parseNumericAmount(aStr)
-
-                // If amountIdx failed or was not set, scan other columns for a valid numeric value
-                if (num == null) {
-                    for (cIdx in tokens.indices) {
-                        if (cIdx != dateIdx && cIdx != timeIdx && cIdx != typeIdx) {
-                            val candidate = parseNumericAmount(tokens[cIdx])
-                            if (candidate != null && candidate != 0.0) {
-                                num = candidate
-                                break
-                            }
-                        }
-                    }
-                }
-
-                if (num != null && num != 0.0) {
-                    val isNegative = (aStr.contains("-") || (aStr.startsWith("(") && aStr.endsWith(")"))) || num < 0
-                    val inferredType = if (isNegative) {
-                        TransactionType.CASH_OUT
+                if (tStr.isNotBlank()) {
+                    val pType = parseType(tStr)
+                    if (pType == null) {
+                        errors.add("Invalid Type: $tStr")
                     } else {
-                        parseType(tStr) ?: TransactionType.CASH_OUT
+                        parsedType = pType
                     }
-                    parsedType = inferredType
-                    parsedAmount = floor(abs(num))
-                    typeStr = if (inferredType == TransactionType.CASH_IN) "Cash In" else "Cash Out"
-                    amountStr = parsedAmount.toLong().toString()
                 } else {
-                    errors.add("Invalid Amount in row")
+                    parsedType = TransactionType.CASH_OUT
                 }
+
+                val num = parseNumericAmount(aStr)
+                if (num == null) {
+                    errors.add("Invalid Amount in row")
+                } else if (num <= 0.0 || aStr.contains("-") || aStr.startsWith("(")) {
+                    errors.add("Amount must be positive")
+                } else {
+                    parsedAmount = num
+                    amountStr = if (num % 1.0 == 0.0) num.toLong().toString() else String.format(Locale.US, "%.2f", num)
+                }
+                typeStr = if (parsedType == TransactionType.CASH_IN) "Cash In" else "Cash Out"
             }
 
             val parsedRow = ParsedImportRow(

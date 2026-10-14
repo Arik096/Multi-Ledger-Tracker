@@ -83,6 +83,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.ui.theme.ClashGroteskFont
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.CashInGreen
 import com.example.ui.theme.CashOutRed
@@ -161,52 +162,66 @@ fun CashPositionScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = "Cash Position",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 19.sp,
-                            maxLines = 1
-                        )
-                        Text(
-                            text = "Cash Comparison",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1
-                        )
-                    }
-                },
-                actions = {
-                    // Quick Clear amounts button
-                    IconButton(
-                        onClick = { showClearConfirmDialog = true },
-                        modifier = Modifier.testTag("cash_position_clear_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Clear,
-                            contentDescription = "Clear all amounts",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+            Column {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text(
+                                text = "Cash Position",
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontFamily = ClashGroteskFont,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 20.sp
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "Physical vs Account Comparison",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontFamily = ClashGroteskFont,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 12.sp
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    },
+                    actions = {
+                        // Quick Clear amounts button
+                        IconButton(
+                            onClick = { showClearConfirmDialog = true },
+                            modifier = Modifier.testTag("cash_position_clear_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Clear,
+                                contentDescription = "Clear all amounts",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
 
-                    // Reset all fields back to defaults button
-                    IconButton(
-                        onClick = { showResetConfirmDialog = true },
-                        modifier = Modifier.testTag("cash_position_reset_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Reset fields to default",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                        // Reset all fields back to defaults button
+                        IconButton(
+                            onClick = { showResetConfirmDialog = true },
+                            modifier = Modifier.testTag("cash_position_reset_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Reset fields to default",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
                 )
-            )
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                    thickness = 0.75.dp
+                )
+            }
         }
     ) { innerPadding ->
         LazyColumn(

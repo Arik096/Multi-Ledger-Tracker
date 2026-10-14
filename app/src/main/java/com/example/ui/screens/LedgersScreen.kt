@@ -57,10 +57,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import com.example.ui.theme.ClashGroteskFont
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -152,103 +156,109 @@ fun LedgersScreen(
 
     val currentList = if (selectedTab == 0) activeBooks else archivedBooks
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            Column {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text(
+                                text = "Books",
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontFamily = ClashGroteskFont,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 20.sp
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "${allBooks.count { !it.isArchived }} Active • ${allBooks.count { it.isArchived }} Archived",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontFamily = ClashGroteskFont,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 12.sp
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    },
+                    navigationIcon = if (onNavigateBack != null) {
+                        {
+                            IconButton(
+                                onClick = onNavigateBack,
+                                modifier = Modifier.testTag("ledgers_back_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Back to Dashboard"
+                                )
+                            }
+                        }
+                    } else {
+                        {}
+                    },
+                    actions = {
+                        // Import Book from CSV
+                        IconButton(
+                            onClick = {
+                                targetBookForImport = null
+                                showImportCsvDialog = true
+                            },
+                            modifier = Modifier.testTag("button_import_book_csv")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.UploadFile,
+                                contentDescription = "Import Book with CSV",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        // Cloud Sync & Profile Icon Button
+                        IconButton(
+                            onClick = onOpenDriveBackup,
+                            modifier = Modifier.testTag("button_open_drive_backup")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CloudDone,
+                                contentDescription = "Cloud Sync & Profile",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        // Add Book Icon Button
+                        IconButton(
+                            onClick = { showCreateDialog = true },
+                            modifier = Modifier.testTag("button_add_book")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Add New Book",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
+                )
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                    thickness = 0.75.dp
+                )
+            }
+        }
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(innerPadding)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Header Row: Title & Action Icons
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f, fill = false)
-                ) {
-                    if (onNavigateBack != null) {
-                        IconButton(
-                            onClick = onNavigateBack,
-                            modifier = Modifier
-                                .padding(end = 4.dp)
-                                .testTag("ledgers_back_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back to Dashboard"
-                            )
-                        }
-                    }
-                    Column {
-                        Text(
-                            text = "Books",
-                            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = "${allBooks.count { !it.isArchived }} Active • ${allBooks.count { it.isArchived }} Archived",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // Import Book from CSV
-                    FilledTonalIconButton(
-                        onClick = {
-                            targetBookForImport = null
-                            showImportCsvDialog = true
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .size(42.dp)
-                            .testTag("button_import_book_csv")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.UploadFile,
-                            contentDescription = "Import Book with CSV",
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
-                    // Cloud Sync & Profile Icon Button
-                    FilledIconButton(
-                        onClick = onOpenDriveBackup,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .size(42.dp)
-                            .testTag("button_open_drive_backup")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CloudDone,
-                            contentDescription = "Cloud Sync & Profile",
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
-                    // Add Book Icon Button
-                    FilledIconButton(
-                        onClick = { showCreateDialog = true },
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .size(42.dp)
-                            .testTag("button_add_book")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Add New Book",
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-            }
 
             // Search Bar
             OutlinedTextField(

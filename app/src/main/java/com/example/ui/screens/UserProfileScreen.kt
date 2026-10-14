@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.CloudQueue
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DarkMode
@@ -96,6 +97,7 @@ import com.example.data.preferences.ModernPalette
 import com.example.data.preferences.ThemeMode
 import com.example.ui.theme.CashInGreen
 import com.example.ui.theme.CashOutRed
+import com.example.ui.theme.ClashGroteskFont
 import com.example.ui.viewmodel.LedgerViewModel
 import com.example.util.AmountFormatter
 import kotlinx.coroutines.launch
@@ -132,19 +134,59 @@ fun UserProfileScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "User Profile & Settings",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
-                ),
-                modifier = Modifier.testTag("user_profile_top_bar")
-            )
+            Column {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text(
+                                text = "User Profile & Settings",
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontFamily = ClashGroteskFont,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 20.sp
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "Account, Preferences & Cloud Sync",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontFamily = ClashGroteskFont,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 12.sp
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = {
+                                if (isAccountConnected) {
+                                    viewModel.triggerAutoSync(showToast = true)
+                                }
+                            },
+                            modifier = Modifier.testTag("user_profile_sync_action")
+                        ) {
+                            Icon(
+                                imageVector = if (isAccountConnected) Icons.Default.CloudDone else Icons.Default.CloudQueue,
+                                contentDescription = "Cloud Status",
+                                tint = if (isAccountConnected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface
+                    ),
+                    modifier = Modifier.testTag("user_profile_top_bar")
+                )
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                    thickness = 0.75.dp
+                )
+            }
         },
         modifier = modifier.fillMaxSize()
     ) { innerPadding ->

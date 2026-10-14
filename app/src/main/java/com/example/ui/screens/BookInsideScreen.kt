@@ -91,6 +91,7 @@ import com.example.data.model.TransactionRecord
 import com.example.data.model.TransactionType
 import com.example.ui.theme.CashInGreen
 import com.example.ui.theme.CashOutRed
+import com.example.ui.theme.ClashGroteskFont
 import com.example.ui.theme.LocalIsDarkTheme
 import com.example.ui.viewmodel.LedgerViewModel
 import com.example.util.AmountFormatter
@@ -266,29 +267,32 @@ fun BookInsideScreen(
             .fillMaxSize()
             .testTag("book_inside_screen"),
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = book.name,
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp
-                            ),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = "Activity & Members",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 12.sp
-                            ),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                },
+            Column {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text(
+                                text = book.name,
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontFamily = ClashGroteskFont,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 20.sp
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "Activity & Members",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontFamily = ClashGroteskFont,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 12.sp
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    },
                 navigationIcon = {
                     IconButton(
                         onClick = onNavigateBack,
@@ -418,19 +422,28 @@ fun BookInsideScreen(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
             )
-        },
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                thickness = 0.75.dp
+            )
+        }
+    },
         bottomBar = {
-            // Split Bottom Action Bar: [+ Cash In] (Green) and [- Cash Out] (Red)
-            Surface(
-                tonalElevation = 8.dp,
-                shadowElevation = 8.dp,
-                color = MaterialTheme.colorScheme.surface,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+            Column {
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                    thickness = 0.75.dp
+                )
+                // Split Bottom Action Bar: [+ Cash In] (Green) and [- Cash Out] (Red)
+                Surface(
+                    tonalElevation = 3.dp,
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -492,7 +505,8 @@ fun BookInsideScreen(
                 }
             }
         }
-    ) { innerPadding ->
+    }
+) { innerPadding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
