@@ -161,16 +161,11 @@ fun MainAppScreen(
         } else null
     }
 
-    var isOfflineMode by remember { mutableStateOf(false) }
-
-    if (!isAccountConnected && driveAccountEmail.isBlank() && !isOfflineMode) {
+    if (!isAccountConnected && driveAccountEmail.isBlank()) {
         LoginScreen(
             viewModel = viewModel,
             onLoginSuccess = {
                 viewModel.triggerAutoSync(showToast = true)
-            },
-            onContinueOffline = {
-                isOfflineMode = true
             }
         )
         return

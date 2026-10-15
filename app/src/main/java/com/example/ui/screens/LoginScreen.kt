@@ -48,30 +48,28 @@ import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.ui.viewmodel.LedgerViewModel
 
-import androidx.compose.material.icons.filled.CloudOff
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material3.AlertDialog
+import android.content.Intent
+import android.provider.Settings
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.TextButton
 import com.example.data.auth.findActivity
 
 /**
- * Simplified, uncluttered Login Screen.
- * Feature list cards are removed as requested, focusing directly on the Google Sign-In action.
+ * Modern, focused Login Screen.
+ * Enforces authenticating with Google account to access CashLedger and sync data.
  */
 @Composable
 fun LoginScreen(
     viewModel: LedgerViewModel,
-    onLoginSuccess: () -> Unit,
-    onContinueOffline: () -> Unit = {}
+    onLoginSuccess: () -> Unit
 ) {
     val context = LocalContext.current
     var isSigningIn by remember { mutableStateOf(false) }
-    var statusText by remember { mutableStateOf<String?>(null) }
-    var showEmailDialog by remember { mutableStateOf(false) }
-    var emailInput by remember { mutableStateOf("") }
-    var emailError by remember { mutableStateOf<String?>(null) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var showAccountSettingsHelper by remember { mutableStateOf(false) }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -89,7 +87,7 @@ fun LoginScreen(
             // App Brand Logo with subtle elevation and rounded corners
             Box(
                 modifier = Modifier
-                    .size(104.dp)
+                    .size(108.dp)
                     .shadow(elevation = 8.dp, shape = RoundedCornerShape(28.dp))
                     .clip(RoundedCornerShape(28.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
@@ -118,34 +116,43 @@ fun LoginScreen(
                 letterSpacing = (-0.5).sp
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             Text(
-                text = "Sign in with your Google account to restore previous data or start fresh.",
+                text = "Sign in with your Google account to access your financial ledgers and cloud backup.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
-                lineHeight = 20.sp,
+                lineHeight = 21.sp,
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
 
-            Spacer(modifier = Modifier.height(36.dp))
+            Spacer(modifier = Modifier.height(40.dp))
 
             // Google Sign-In Primary Button
             Button(
                 onClick = {
                     if (isSigningIn) return@Button
                     isSigningIn = true
-                    statusText = "Connecting with Google..."
-                    val activity = context.findActivity() ?: context
+                    errorMessage = null
+                    showAccountSettingsHelper = false
+                    val activity = context.findActivity() ?: (context as? android.app.Activity)
                     viewModel.signInWithGoogle(activity) { success, message ->
                         isSigningIn = false
-                        statusText = null
                         if (success) {
                             Toast.makeText(context, message, Toast.LENGTH_LONG).show()
                             onLoginSuccess()
                         } else {
-                            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                            if (message.contains("No Google account", ignoreCase = true) ||
+                                message.contains("Settings", ignoreCase = true) ||
+                                message.contains("NO_ACCOUNT_FOUND", ignoreCase = true)
+                            ) {
+                                errorMessage = message
+                                showAccountSettingsHelper = true
+                            } else if (!message.contains("cancelled", ignoreCase = true)) {
+                                errorMessage = message
+                                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                            }
                         }
                     }
                 },
@@ -169,7 +176,7 @@ fun LoginScreen(
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        text = "Signing in...",
+                        text = "Signing in with Google...",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
                     )
                 } else {
@@ -191,57 +198,77 @@ fun LoginScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(18.dp))
 
-            // Secondary option: Sign in with Google Account Email
-            OutlinedButton(
-                onClick = { showEmailDialog = true },
-                shape = RoundedCornerShape(20.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp)
-                    .testTag("btn_link_google_email")
-            ) {
-                Icon(Icons.Default.Email, contentDescription = null, modifier = Modifier.size(20.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Sign in with Google Email", fontWeight = FontWeight.SemiBold)
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Fallback: Continue in Offline Mode
-            TextButton(
-                onClick = onContinueOffline,
-                modifier = Modifier.testTag("btn_continue_offline")
-            ) {
-                Icon(
-                    Icons.Default.CloudOff,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    "Continue in Offline Mode",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
+            // Helper card shown if phone has no Google account added
             AnimatedVisibility(
-                visible = statusText != null,
+                visible = showAccountSettingsHelper && errorMessage != null,
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
-                Text(
-                    text = statusText ?: "",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Medium,
-                    textAlign = TextAlign.Center
-                )
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                    ),
+                    modifier = Modifier.fillMaxWidth().testTag("no_account_helper_card")
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "No Google Account on Phone",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Please add a Google account to your device in Settings to sign in to CashLedger.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedButton(
+                            onClick = {
+                                try {
+                                    val intent = Intent(Settings.ACTION_ADD_ACCOUNT).apply {
+                                        putExtra(Settings.EXTRA_ACCOUNT_TYPES, arrayOf("com.google"))
+                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    try {
+                                        context.startActivity(
+                                            Intent(Settings.ACTION_SYNC_SETTINGS).apply {
+                                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                            }
+                                        )
+                                    } catch (e2: Exception) {
+                                        Toast.makeText(context, "Could not open Settings: ${e2.localizedMessage}", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.testTag("btn_open_account_settings")
+                        ) {
+                            Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Add Account in Settings", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.weight(1f))
@@ -253,70 +280,5 @@ fun LoginScreen(
                 textAlign = TextAlign.Center
             )
         }
-    }
-
-    if (showEmailDialog) {
-        AlertDialog(
-            onDismissRequest = { showEmailDialog = false },
-            icon = {
-                Icon(
-                    Icons.Default.Email,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(28.dp)
-                )
-            },
-            title = {
-                Text("Sign In with Google Email", fontWeight = FontWeight.Bold)
-            },
-            text = {
-                Column {
-                    Text(
-                        "Enter your Google account email to link your profile and restore cloud-synced books.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(14.dp))
-                    OutlinedTextField(
-                        value = emailInput,
-                        onValueChange = {
-                            emailInput = it
-                            emailError = null
-                        },
-                        label = { Text("Google Account Email") },
-                        placeholder = { Text("e.g. user@gmail.com") },
-                        singleLine = true,
-                        isError = emailError != null,
-                        supportingText = if (emailError != null) { { Text(emailError!!) } } else null,
-                        modifier = Modifier.fillMaxWidth().testTag("input_google_email")
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (!emailInput.contains("@") || emailInput.isBlank()) {
-                            emailError = "Please enter a valid email address"
-                            return@Button
-                        }
-                        showEmailDialog = false
-                        viewModel.connectGoogleEmail(emailInput) { success, msg ->
-                            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
-                            if (success) {
-                                onLoginSuccess()
-                            }
-                        }
-                    },
-                    modifier = Modifier.testTag("btn_confirm_google_email")
-                ) {
-                    Text("Connect & Sync")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showEmailDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
     }
 }

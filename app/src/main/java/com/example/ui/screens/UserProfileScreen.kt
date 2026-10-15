@@ -131,8 +131,6 @@ fun UserProfileScreen(
     // Dialog states
     var showDisconnectConfirmDialog by remember { mutableStateOf(false) }
     var showCurrencyDialog by remember { mutableStateOf(false) }
-    var showLinkEmailDialog by remember { mutableStateOf(false) }
-    var emailInput by remember { mutableStateOf("") }
 
     var statusMessage by remember { mutableStateOf<String?>(null) }
     var isSuccessStatus by remember { mutableStateOf(true) }
@@ -264,14 +262,10 @@ fun UserProfileScreen(
                     },
                     onSignOutClick = { showDisconnectConfirmDialog = true },
                     onSignInClick = {
-                        val activity = context.findActivity() ?: context
+                        val activity = context.findActivity() ?: (context as? android.app.Activity)
                         viewModel.signInWithGoogle(activity) { success, msg ->
                             Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
                         }
-                    },
-                    onLinkEmailClick = {
-                        emailInput = driveAccountEmail
-                        showLinkEmailDialog = true
                     }
                 )
             }
@@ -361,69 +355,6 @@ fun UserProfileScreen(
         )
     }
 
-    // Dialog: Link Google Account Email
-    if (showLinkEmailDialog) {
-        var emailError by remember { mutableStateOf<String?>(null) }
-        AlertDialog(
-            onDismissRequest = { showLinkEmailDialog = false },
-            icon = {
-                Icon(
-                    Icons.Default.Email,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(28.dp)
-                )
-            },
-            title = {
-                Text("Link Google Account Email", fontWeight = FontWeight.Bold)
-            },
-            text = {
-                Column {
-                    Text(
-                        "Enter your Google account email to link with Firestore cloud sync and restore data across devices.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(14.dp))
-                    OutlinedTextField(
-                        value = emailInput,
-                        onValueChange = {
-                            emailInput = it
-                            emailError = null
-                        },
-                        label = { Text("Google Email") },
-                        placeholder = { Text("e.g. user@gmail.com") },
-                        singleLine = true,
-                        isError = emailError != null,
-                        supportingText = if (emailError != null) { { Text(emailError!!) } } else null,
-                        modifier = Modifier.fillMaxWidth().testTag("input_profile_google_email")
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (!emailInput.contains("@") || emailInput.isBlank()) {
-                            emailError = "Please enter a valid email address"
-                            return@Button
-                        }
-                        showLinkEmailDialog = false
-                        viewModel.connectGoogleEmail(emailInput) { success, msg ->
-                            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
-                        }
-                    },
-                    modifier = Modifier.testTag("btn_confirm_profile_google_email")
-                ) {
-                    Text("Save & Sync")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showLinkEmailDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
 
     // Dialog: Currency Selector
     if (showCurrencyDialog) {
@@ -684,8 +615,7 @@ private fun FirestoreCloudSyncCard(
     lastBackupSummary: String,
     onSyncNow: () -> Unit,
     onSignOutClick: () -> Unit,
-    onSignInClick: () -> Unit = {},
-    onLinkEmailClick: () -> Unit = {}
+    onSignInClick: () -> Unit = {}
 ) {
     Card(
         shape = RoundedCornerShape(20.dp),
@@ -817,23 +747,13 @@ private fun FirestoreCloudSyncCard(
                     Button(
                         onClick = onSignInClick,
                         modifier = Modifier
-                            .weight(1f)
+                            .fillMaxWidth()
                             .testTag("btn_profile_sign_in_google"),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(Icons.Default.AccountCircle, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text("Sign in with Google")
-                    }
-
-                    OutlinedButton(
-                        onClick = onLinkEmailClick,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.testTag("btn_profile_link_email")
-                    ) {
-                        Icon(Icons.Default.Email, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Link Email")
                     }
                 }
             }

@@ -55,31 +55,61 @@ class GoogleAuthManager(
 
     suspend fun signInWithGoogle(activityContext: Context? = null): AuthResult {
         return try {
-            val targetContext = activityContext?.findActivity() ?: activityContext ?: context
+            val targetActivity = activityContext?.findActivity()
+                ?: (activityContext as? Activity)
+                ?: context.findActivity()
+                ?: (context as? Activity)
+
+            if (targetActivity == null) {
+                Log.e("GoogleAuthManager", "signInWithGoogle: Activity context is required for CredentialManager")
+                return AuthResult.Error("Activity context required for sign-in UI")
+            }
+
             val serverClientId = runCatching { context.getString(R.string.default_web_client_id) }
                 .getOrNull()
                 ?.takeIf { it.isNotBlank() }
                 ?: "94131105644-ognvdtbdva2v3d6e17lnj00co6q8suci.apps.googleusercontent.com"
 
-            val signInWithGoogleOption = GetSignInWithGoogleOption.Builder(serverClientId)
-                .build()
+            val activeManager = CredentialManager.create(targetActivity)
 
-            val googleIdOption = GetGoogleIdOption.Builder()
-                .setFilterByAuthorizedAccounts(false)
-                .setServerClientId(serverClientId)
-                .setAutoSelectEnabled(false)
-                .build()
+            // Attempt primary Sign-In with Google option (single option to prevent Play Services conflict)
+            val result = try {
+                val signInWithGoogleOption = GetSignInWithGoogleOption.Builder(serverClientId)
+                    .build()
+                val request = GetCredentialRequest.Builder()
+                    .addCredentialOption(signInWithGoogleOption)
+                    .build()
+                activeManager.getCredential(
+                    request = request,
+                    context = targetActivity
+                )
+            } catch (e: GetCredentialException) {
+                val isCancelled = e is GetCredentialCancellationException ||
+                        e.type.contains("CANCELED", ignoreCase = true) ||
+                        e.type.contains("CANCELLED", ignoreCase = true) ||
+                        e.message?.contains("canceled", ignoreCase = true) == true ||
+                        e.message?.contains("cancelled", ignoreCase = true) == true
 
-            val request = GetCredentialRequest.Builder()
-                .addCredentialOption(signInWithGoogleOption)
-                .addCredentialOption(googleIdOption)
-                .build()
+                if (isCancelled) {
+                    Log.i("GoogleAuthManager", "Sign-in cancelled by user")
+                    return AuthResult.Cancelled
+                }
 
-            val activeManager = if (activityContext != null) CredentialManager.create(targetContext) else credentialManager
-            val result = activeManager.getCredential(
-                request = request,
-                context = targetContext
-            )
+                // If GetSignInWithGoogleOption reported no credential, fallback to GetGoogleIdOption with filterByAuthorizedAccounts = false
+                Log.w("GoogleAuthManager", "GetSignInWithGoogleOption failed (${e.type}). Falling back to GetGoogleIdOption with filterByAuthorizedAccounts=false")
+                val fallbackGoogleIdOption = GetGoogleIdOption.Builder()
+                    .setFilterByAuthorizedAccounts(false)
+                    .setServerClientId(serverClientId)
+                    .setAutoSelectEnabled(false)
+                    .build()
+                val fallbackRequest = GetCredentialRequest.Builder()
+                    .addCredentialOption(fallbackGoogleIdOption)
+                    .build()
+                activeManager.getCredential(
+                    request = fallbackRequest,
+                    context = targetActivity
+                )
+            }
 
             val credential = result.credential
             if (credential is CustomCredential &&
@@ -106,14 +136,22 @@ class GoogleAuthManager(
             AuthResult.Cancelled
         } catch (e: GetCredentialException) {
             Log.e("GoogleAuthManager", "GetCredentialException during sign-in: type=${e.type}, msg=${e.message}", e)
-            val msg = when {
-                e.message?.contains("no credentials", ignoreCase = true) == true ||
-                        e.type.contains("NO_CREDENTIAL", ignoreCase = true) ->
-                    "No Google accounts found on this device. Please sign in or use Google Account Email option."
-                e.message?.contains("canceled", ignoreCase = true) == true ||
-                        e.message?.contains("cancelled", ignoreCase = true) == true ->
-                    "Sign-in was cancelled."
-                else -> e.localizedMessage ?: "Google Sign-In failed"
+            val isCancelled = e.type.contains("CANCELED", ignoreCase = true) ||
+                    e.type.contains("CANCELLED", ignoreCase = true) ||
+                    e.message?.contains("canceled", ignoreCase = true) == true ||
+                    e.message?.contains("cancelled", ignoreCase = true) == true
+
+            if (isCancelled) {
+                return AuthResult.Cancelled
+            }
+
+            val isNoCredential = e.type.contains("NO_CREDENTIAL", ignoreCase = true) ||
+                    e.message?.contains("no credentials", ignoreCase = true) == true
+
+            val msg = if (isNoCredential) {
+                "No Google account found on this device. Please add a Google account in your phone Settings to continue."
+            } else {
+                e.localizedMessage ?: "Google Sign-In failed"
             }
             AuthResult.Error(msg)
         } catch (e: Exception) {
@@ -127,7 +165,10 @@ class GoogleAuthManager(
             if (auth.currentUser != null) {
                 return AuthResult.Success(auth.currentUser!!)
             }
-            val serverClientId = context.getString(R.string.default_web_client_id)
+            val serverClientId = runCatching { context.getString(R.string.default_web_client_id) }
+                .getOrNull()
+                ?.takeIf { it.isNotBlank() }
+                ?: "94131105644-ognvdtbdva2v3d6e17lnj00co6q8suci.apps.googleusercontent.com"
             val googleIdOption = GetGoogleIdOption.Builder()
                 .setFilterByAuthorizedAccounts(true)
                 .setServerClientId(serverClientId)

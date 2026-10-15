@@ -158,6 +158,11 @@ class LedgerViewModel(
                     val photo = user.photoUrl?.toString() ?: ""
                     _profilePhotoPath.value = photo
                     AppPreferencesManager.setProfilePhotoPath(getApplication(), photo)
+                } else {
+                    _driveAccountEmail.value = ""
+                    AppPreferencesManager.setGoogleAccountEmail(getApplication(), "")
+                    _userName.value = ""
+                    _profilePhotoPath.value = ""
                 }
             }
         }
@@ -319,7 +324,7 @@ class LedgerViewModel(
                 }
                 is AuthResult.Cancelled -> {
                     _isCloudSyncing.value = false
-                    onComplete?.invoke(false, "Sign-in cancelled.")
+                    onComplete?.invoke(false, "Sign-in cancelled")
                 }
                 is AuthResult.Error -> {
                     _isCloudSyncing.value = false
@@ -327,25 +332,6 @@ class LedgerViewModel(
                     onComplete?.invoke(false, result.message)
                 }
             }
-        }
-    }
-
-    fun connectGoogleEmail(email: String, onComplete: (Boolean, String) -> Unit) {
-        viewModelScope.launch {
-            val clean = email.trim().lowercase()
-            if (clean.isBlank() || !clean.contains("@")) {
-                onComplete(false, "Please enter a valid Google email address")
-                return@launch
-            }
-            AppPreferencesManager.setGoogleAccountEmail(getApplication(), clean)
-            _driveAccountEmail.value = clean
-            val name = clean.substringBefore("@").replaceFirstChar { it.uppercase() }
-            _userName.value = name
-            AppPreferencesManager.setUserName(getApplication(), name)
-
-            val (foundData, restoreMsg) = syncService.checkAndRestorePreviousData(clean)
-            _snackbarMessage.emit("Connected as $clean")
-            onComplete(true, restoreMsg)
         }
     }
 
